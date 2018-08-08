@@ -42,6 +42,7 @@
 #include "version.h"
 #include "warzoneconfig.h"
 #include "wrappers.h"
+#include "flowfield.h"
 
 //////
 // Our fine replacement for the popt abomination follows
@@ -249,6 +250,7 @@ typedef enum
 	CLI_SKIRMISH,
 	CLI_CONTINUE,
 	CLI_AUTOHOST,
+	CLI_FLOWFIELD,
 } CLI_OPTIONS;
 
 static const struct poptOption *getOptionsTable()
@@ -286,6 +288,7 @@ static const struct poptOption *getOptionsTable()
 		{ "skirmish", POPT_ARG_STRING, CLI_SKIRMISH,   N_("Start skirmish game with given settings file"), N_("test") },
 		{ "continue", POPT_ARG_NONE, CLI_CONTINUE,   N_("Continue the last saved game"), nullptr },
 		{ "autohost", POPT_ARG_STRING, CLI_AUTOHOST,   N_("Start host game with given settings file"), N_("autohost") },
+        { "flowfield", POPT_ARG_NONE, CLI_FLOWFIELD, N_("Use advanced Flow fields method for path finding (experimental)"), nullptr },
 		// Terminating entry
 		{ nullptr, 0, 0,              nullptr,                                    nullptr },
 	};
@@ -669,6 +672,10 @@ bool ParseCommandLine(int argc, const char * const *argv)
 				qFatal("Bad test key");
 			}
 			wz_test = token;
+			break;
+
+		case CLI_FLOWFIELD:
+			flowfield::enable();
 			break;
 		};
 	}
