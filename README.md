@@ -15,6 +15,7 @@ My todos for the game
 * [ ] Adjust trackHeight
 * [ ] Add easing to zoom distance
 * [ ] Make camera pitching "snap" to certain angles (and add easing)
+* [ ] Turn off the "thumping" of the selection box.
 
 Add easing to zoom distance
 ---------------------------
