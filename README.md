@@ -1,5 +1,5 @@
 My todos for the game
-============
+=====================
 
 * [ ] add fade to title screen
 * [ ] remove blue box from logo
@@ -15,3 +15,13 @@ My todos for the game
 * [ ] In trackHeight (I guess?), should not make the camera "jump off a cliff" - maybe make it snap as well
 * [ ] Add easing to zoom distance
 * [ ] Make camera pitching "snap" to certain angles (and add easing)
+
+Add easing to zoom distance
+---------------------------
+
+This code change concerns display.cpp. The new variables, at line 116. The added logic, line 1004 in scroll().
+
+First off, DON'T show the scroll value as a console message. :) that info is relegated to the logs.
+
+We will increase the zoom amount of each mousewheel scroll step. It's a bit too weeny as it is now - we can afford to increase the heaviness somewhat.
+
