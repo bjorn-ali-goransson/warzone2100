@@ -26,6 +26,12 @@ First off, DON'T show the scroll value as a console message. :) that info is rel
 
 We will increase the zoom amount of each mousewheel scroll step. It's a bit too weeny as it is now - we can afford to increase the heaviness somewhat.
 
+A global named like "desiredDistance" is added. It needs to be reset as well, between games. [ ]
+
+display.h needs a new constant for DISTANCE_CHANGE_SPEED.
+
+Cubic easing should do it. https://easings.net/en#easeInCubic
+
 Adjust trackHeight
 ------------------
 
