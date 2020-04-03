@@ -11,3 +11,4 @@ My todos for the game
 * [ ] randomize animation frame on eg. oil derricks
 * [ ] UI refresh?
 * [ ] Replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
+* [ ] During arc rotate, multiply the player.r.y = rotInitial ..... by rotational X angle. A lower angle (?) should equal a slower rotation.
