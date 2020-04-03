@@ -12,6 +12,6 @@ My todos for the game
 * [ ] UI refresh?
 * [ ] Replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
 * [ ] During arc rotate, multiply the player.r.y = rotInitial ..... by rotational X angle. A lower angle (?) should equal a slower rotation
-* [ ] In trackHeight (I guess?), should not make the camera "jump off a cliff"
+* [ ] In trackHeight (I guess?), should not make the camera "jump off a cliff" - maybe make it snap as well
 * [ ] Add easing to zoom distance
 * [ ] Make camera pitching "snap" to certain angles (and add easing)
