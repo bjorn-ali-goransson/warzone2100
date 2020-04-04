@@ -37,7 +37,9 @@ My todos for the game
 Highlight units by stencil testing
 ----------------------------------
 
-Some kind of shader must be used. SHADER_GFX_COLOUR ? SHADER_GENERIC_COLOR ? pie_ActivateShader ?
+Some kind of shader must be used. SHADER_GENERIC_COLOR ? pie_ActivateShader ?
+
+Apparently, pie_DrawShadow() does this in a similar manner to what we must do.
 
 Add easing to zoom distance
 ---------------------------
