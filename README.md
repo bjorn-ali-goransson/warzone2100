@@ -32,6 +32,7 @@ My todos for the game
 * [x] Make rotation "softer"
 * [ ] Make camera pitching "snap" to certain angles (and add easing)
 * [ ] Turn off the "pulsating" of the selection box. (BOX_PULSE_SIZE)
+* [ ] Highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 
 Add easing to zoom distance
 ---------------------------
