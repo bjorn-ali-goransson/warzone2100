@@ -34,6 +34,11 @@ My todos for the game
 * [ ] check if models can be exploded upon destruction
 * [ ] UI refresh?
 
+Highlight units by stencil testing
+----------------------------------
+
+Some kind of shader must be used. SHADER_GFX_COLOUR ? SHADER_GENERIC_COLOR ? pie_ActivateShader ?
+
 Add easing to zoom distance
 ---------------------------
 
