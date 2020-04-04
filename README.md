@@ -27,7 +27,7 @@ My todos for the game
 * [ ] randomize animation frame on eg. oil derricks
 * [ ] UI refresh?
 * [ ] Replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
-* [ ] Adjust trackHeight
+* [x] Adjust trackHeight
 * [x] Make zooming "softer"
 * [x] Make rotation "softer"
 * [x] Turn off the "pulsating" of the selection box. (BOX_PULSE_SIZE)
