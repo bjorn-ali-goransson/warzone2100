@@ -40,9 +40,11 @@ This code change concerns display.cpp. The new variables, at line 116. The added
 
 First off, DON'T show the scroll value as a console message. :) that info is relegated to the logs.
 
-We will increase the zoom amount of each mousewheel scroll step. It's a bit too weeny as it is now - we can afford to increase the heaviness somewhat.
+We will increase the zoom rate of each mousewheel scroll step. It's a bit too weeny as it is now - we can afford to increase the heaviness somewhat.
 
 There is already something called zoom().
+
+The thing called ZOOM RATE is the mousewheel step zoom rate. Default needs to be increased.
 
 Cubic easing should do it. https://easings.net/en#easeInCubic
 
