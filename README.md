@@ -29,6 +29,8 @@ My todos for the game
 * [ ] randomize animation frame on eg. oil derricks
 * [ ] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
+* [ ] STOP scrolling when mouse is outside window!!!
+* [ ] what's the meaning of the big X cursor that appears on the sides of the screen?
 * [ ] acc / dec of tanks
 * [ ] add easing to projectiles
 * [ ] check if models can be exploded upon destruction
@@ -37,9 +39,6 @@ My todos for the game
 Highlight units by stencil testing
 ----------------------------------
 
-Some kind of shader must be used. SHADER_GENERIC_COLOR ? pie_ActivateShader ?
-
-Apparently, pie_DrawShadow() does this in a similar manner to what we must do.
 
 Add easing to zoom distance
 ---------------------------
