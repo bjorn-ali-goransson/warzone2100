@@ -25,6 +25,7 @@ My todos for the game
 * [ ] remove blue box from logo
 * [ ] fix "landing" effect
 * [ ] fix blinking of start pad X
+* [ ] make loading effect smoother
 * [ ] randomize animation frame on eg. oil derricks
 * [ ] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
