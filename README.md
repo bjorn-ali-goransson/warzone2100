@@ -1,3 +1,19 @@
+Notes
+=====
+
+To prepare build (?) :
+
+    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX:PATH=~/wz/install -GNinja -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
+(last param seems to be required on WSL)
+
+To compile:
+
+    cmake --build build --target install
+
+To run:
+
+    /root/wz/install/bin/warzone2100
+
 My todos for the game
 =====================
 
