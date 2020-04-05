@@ -41,6 +41,11 @@ My todos for the game
 * [ ] check if models can be exploded upon destruction
 * [ ] UI refresh?
 
+Make startup images 1080p
+-------------------------
+
+Hm ... Tried changing the backdrops but they don't update in-game ...
+
 Make loading effect smoother
 ----------------------------
 
