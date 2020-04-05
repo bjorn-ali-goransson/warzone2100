@@ -31,7 +31,7 @@ My todos for the game
 * [ ] fix blinking of start pad X
 * [ ] make loading effect smoother
 * [ ] make startup images 1080p
-* [ ] fix "move unit here" click effect on cursor, replace with lake ripple?
+* [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
 * [ ] randomize animation frame on eg. oil derricks
 * [ ] animation interpolation between frames
 * [ ] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
