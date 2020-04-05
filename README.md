@@ -30,6 +30,7 @@ My todos for the game
 * [ ] fix "landing" effect
 * [ ] fix blinking of start pad X
 * [ ] make loading effect smoother
+* [ ] make startup images 1080p
 * [ ] randomize animation frame on eg. oil derricks
 * [ ] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
