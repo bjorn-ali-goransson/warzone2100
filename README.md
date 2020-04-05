@@ -32,6 +32,7 @@ My todos for the game
 * [ ] make loading effect smoother
 * [ ] make startup images 1080p
 * [ ] randomize animation frame on eg. oil derricks
+* [ ] animation interpolation between frames
 * [ ] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
 * [ ] STOP scrolling when mouse is outside window!!!
