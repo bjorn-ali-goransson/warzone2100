@@ -1,4 +1,4 @@
-Notes
+Compiling / running under WSL
 =====
 
 To prepare build (?) :
@@ -9,6 +9,10 @@ To prepare build (?) :
 To compile:
 
     cmake --build build --target install
+
+Start Xming and do:
+
+    export DISPLAY=:0
 
 To run:
 
