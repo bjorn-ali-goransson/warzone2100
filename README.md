@@ -35,6 +35,9 @@ My todos for the game
 * [ ] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
 * [ ] STOP scrolling when mouse is outside window!!!
+* [ ] mouse rotating inverts its origin when too close
+* [ ] make possible to have totally top-down camera pitch
+* [ ] either redraw the positional square on the radar (to accurately convey the camera position) or pitch the actual map
 * [ ] what's the meaning of the big X cursor that appears on the sides of the screen?
 * [ ] acc / dec of tanks
 * [ ] add easing to projectiles
