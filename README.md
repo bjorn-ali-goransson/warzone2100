@@ -40,9 +40,10 @@ My todos for the game
 * [ ] check if models can be exploded upon destruction
 * [ ] UI refresh?
 
-Highlight units by stencil testing
-----------------------------------
+Make loading effect smoother
+----------------------------
 
+Problem: Since the loading blocks the main thread, we might not be able to update more smoothly before first refactoring the loading screen initialization logic. BTW, is the logic and the rendering synched? Isn't that bad practice? ... TBC ...
 
 Add easing to zoom distance
 ---------------------------
@@ -55,8 +56,6 @@ Adjust trackHeight
 ------------------
 
 Cubic easing https://easings.net/en#easeInCubic
-
-This feature is kinda strange, in many aspects.
 
 Don't consider terrain outside the FOW.
 
