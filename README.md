@@ -33,6 +33,7 @@ My todos for the game
 * [ ] make startup images 1080p
 * [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
 * [ ] randomize animation frame on eg. oil derricks
+* [x] randomize rotation on radars
 * [ ] animation interpolation between frames
 * [ ] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
