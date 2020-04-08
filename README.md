@@ -1,8 +1,7 @@
 Compiling / running under WSL
 =====
 
-To prepare build (?) :
-
+    sudo -i
     cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX:PATH=~/wz/install -GNinja -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
     cmake --build build --target install
     export DISPLAY=:0
