@@ -67,3 +67,12 @@ Randomize animation frame on eg. oil derricks
 ---------------------------------------------
 
 Maybe something to do with `psDroid->sDisplay.frameNumber`
+
+Links
+-----
+
+https://gamedev.stackexchange.com/questions/141844/how-to-draw-a-circle-on-the-ground-like-in-warcraft-3
+
+https://github.com/Warzone2100/warzone2100/issues/744
+
+"opengl bullet tracer trails"
