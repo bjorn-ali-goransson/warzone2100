@@ -38,6 +38,12 @@ My todos for the game
 * [ ] add easing to projectiles
 * [ ] check if models can be exploded upon destruction
 * [ ] UI refresh?
+* [ ] sky refresh; look to tribal trouble with procedural clouds
+* [ ] lightposts
+* [ ] lights on tanks
+* [ ] radars have "gaps" in the middle of the dish, cyborgs seem to have too
+* [ ] smoke trails from bullets
+* [ ] muzzle flashes
 
 Make startup images 1080p
 -------------------------
