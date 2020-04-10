@@ -13,7 +13,8 @@ My todos for the game
 * [x] Adjust trackHeight
 * [x] Make zooming "softer"
 * [x] Make rotation "softer"
-* [x] Turn off the "pulsating" of the selection box. (BOX_PULSE_SIZE)
+* [ ] lock & hide mouse while rotating
+* [x] Make a new pulsating effect (BOX_PULSE_SIZE)
 * [ ] add fade to title screen
 * [ ] remove blue box from logo
 * [ ] fix "landing" effect
@@ -30,8 +31,9 @@ My todos for the game
 * [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
 * [ ] STOP scrolling when mouse is outside window!!!
+* [ ] STOP scrolling when mouse is on title bar!!!
 * [ ] mouse rotating inverts its origin when too close
-* [ ] make possible to have totally top-down camera pitch
+* [x] make possible to have totally top-down camera pitch
 * [ ] either redraw the positional square on the radar (to accurately convey the camera position) or pitch the actual map
 * [ ] what's the meaning of the big X cursor that appears on the sides of the screen?
 * [ ] acc / dec of tanks
