@@ -43,9 +43,11 @@ My todos for the game
 * [ ] sky refresh; look to tribal trouble with procedural clouds
 * [ ] lightposts
 * [ ] lights on tanks
-* [ ] radars have "gaps" in the middle of the dish, cyborgs seem to have too
+* [ ] small radars have "gaps" in the middle of the dish, cyborgs seem to have too
 * [ ] smoke trails from bullets
 * [ ] muzzle flashes
+* [ ] rain looks wierd when rotating?
+* [ ] rain stops abruptly
 
 Make startup images 1080p
 -------------------------
