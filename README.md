@@ -49,6 +49,7 @@ My todos for the game
 * [ ] rain looks wierd when rotating?
 * [ ] rain stops abruptly
 * [ ] oil derrick should stop at the same frame
+* [ ] camera position is not saved between games
 
 Make startup images 1080p
 -------------------------
