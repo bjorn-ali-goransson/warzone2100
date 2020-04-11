@@ -16,6 +16,7 @@ My todos for the game
 * [ ] lock & hide mouse while rotating
 * [x] Make a new pulsating effect (BOX_PULSE_SIZE)
 * [ ] add fade to title screen
+* [x] add fade to game start
 * [ ] remove blue box from logo
 * [ ] fix "landing" effect
 * [ ] fix blinking of start pad X
@@ -27,7 +28,7 @@ My todos for the game
 * [ ] somewhere it said that the Muzzle flash has too fast .... smk of PIE flag (4000?) to be displayed.
 * [x] randomize animation frame on eg. oil derricks
 * [x] randomize rotation on radars
-* [ ] animation interpolation between frames
+* [x] animation interpolation between frames
 * [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
 * [ ] STOP scrolling when mouse is outside window!!!
