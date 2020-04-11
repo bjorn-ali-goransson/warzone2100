@@ -48,6 +48,7 @@ My todos for the game
 * [ ] muzzle flashes
 * [ ] rain looks wierd when rotating?
 * [ ] rain stops abruptly
+* [ ] oil derrick should stop at the same frame
 
 Make startup images 1080p
 -------------------------
