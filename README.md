@@ -15,16 +15,16 @@ Logic adjustments or very small features.
 * [x] Adjust trackHeight
 * [x] Make zooming "softer"
 * [x] Make rotation "softer"
-* [ ] Redo mouse / key camera scrolling
-* [ ] lock & hide mouse while rotating
-* [x] Make a new pulsating effect (BOX_PULSE_SIZE)
-* [ ] add fade to title screen
+* [ ] Redo mouse / key camera scrolling (tired of easing functions rn)
+* [ ] lock & hide mouse while rotating (waiting for rotation logic PR to get merged)
+* [x] Make a new pulsating effect
+* [ ] add fade to title screen (loading screen must be redone)
 * [x] add fade to game start
 * [ ] remove blue box from logo
-* [ ] fix "landing" effect (prolly in setViewPos() - display3d.cpp)
+* [x] fix "landing" effect (prolly in setViewPos() - display3d.cpp)
 * [ ] fix blinking of start pad X
-* [ ] make loading effect smoother
-* [ ] make startup images 1080p
+* [ ] make loading effect smoother (loading screen must be redone)
+* [ ] make startup images 1080pe
 * [ ] remove all "due to a bug in SDL's SDL_ShowCursor()" comments
 * [x] randomize animation frame on eg. oil derricks
 * [x] randomize rotation on radars
