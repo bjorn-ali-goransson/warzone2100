@@ -48,6 +48,7 @@ My todos for the game
 * [ ] oil derrick should stop at the current frame (not reset frames)
 * [ ] camera position is not saved between games
 * [ ] VTOL turn radius
+* [ ] tank turning arcs
 
 Make startup images 1080p
 -------------------------
