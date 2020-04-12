@@ -39,7 +39,7 @@ Logic adjustments or very small features.
 * [ ] oil derrick should stop at the current frame (not reset frames)
 * [ ] camera position is not saved between games
 * [ ] flying debris should spin, when flying and also change it's spinning when hitting the ground
-* [ ] redo wzSetCursor() usage in renderLoop
+* [ ] redo wzSetCursor() usage in renderLoop. add wzApplyCursor() in the end of the main loop and compare it with wz_old_cursor.
 
 Features:
 =========
