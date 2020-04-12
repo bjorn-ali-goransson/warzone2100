@@ -24,8 +24,6 @@ My todos for the game
 * [ ] make startup images 1080p
 * [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
 * [ ] is there sparks flying currently? or add it ...
-* [ ] remove machine gun fire projectiles. speed should be 100!
-* [ ] somewhere it said that the Muzzle flash has too fast .... smk of PIE flag (4000?) to be displayed.
 * [x] randomize animation frame on eg. oil derricks
 * [x] randomize rotation on radars
 * [x] animation interpolation between frames
@@ -38,18 +36,16 @@ My todos for the game
 * [ ] either redraw the positional square on the radar (to accurately convey the camera position) or pitch the actual map
 * [ ] what's the meaning of the big X cursor that appears on the sides of the screen?
 * [ ] acc / dec of tanks
-* [ ] add easing to projectiles
+* [ ] projectiles refresh
 * [ ] check if models can be exploded upon destruction
 * [ ] UI refresh?
 * [ ] sky refresh; look to tribal trouble with procedural clouds
 * [ ] lightposts
 * [ ] lights on tanks
 * [ ] small radars have "gaps" in the middle of the dish, cyborgs seem to have too
-* [ ] smoke trails from bullets
-* [ ] muzzle flashes
 * [ ] rain looks wierd when rotating?
 * [ ] rain stops abruptly
-* [ ] oil derrick should stop at the same frame
+* [ ] oil derrick should stop at the current frame (not reset frames)
 * [ ] camera position is not saved between games
 
 Make startup images 1080p
@@ -62,24 +58,12 @@ Make loading effect smoother
 
 Problem: Since the loading blocks the main thread, we might not be able to update more smoothly before first refactoring the loading screen initialization logic. BTW, is the logic and the rendering synched? Isn't that bad practice? ... TBC ...
 
-Add easing to zoom distance
----------------------------
-
-zoom()
-
-Cubic easing https://easings.net/en#easeInCubic
-
 Adjust trackHeight
 ------------------
 
 Cubic easing https://easings.net/en#easeInCubic
 
 Don't consider terrain outside the FOW.
-
-Randomize animation frame on eg. oil derricks
----------------------------------------------
-
-Maybe something to do with `psDroid->sDisplay.frameNumber`
 
 Lightposts / lights / lights on tanks
 -------------------------------------
@@ -95,6 +79,15 @@ Thrusters
 On the drop ship, for example.
 
 ![Thruster from Q3](thruster.gif)
+
+Projectiles refresh
+-------------------
+
+* [ ] remove machine gun fire projectiles. speed should be 100!
+* [ ] somewhere it said that the Muzzle flash has too fast .... smk of PIE flag (4000?) to be displayed.
+* [ ] projectiles should be protracted
+* [ ] smoke trails from bullets, see uncharted 4
+* [ ] muzzle flashes
 
 Links
 -----
