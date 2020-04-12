@@ -49,6 +49,7 @@ My todos for the game
 * [ ] camera position is not saved between games
 * [ ] VTOL turn radius
 * [ ] tank turning arcs
+* [ ] flying debris should spin, when flying and also change it's spinning when hitting the ground
 
 Make startup images 1080p
 -------------------------
