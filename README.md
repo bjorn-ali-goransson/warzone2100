@@ -15,6 +15,7 @@ Logic adjustments or very small features.
 * [x] Adjust trackHeight
 * [x] Make zooming "softer"
 * [x] Make rotation "softer"
+* [ ] Redo mouse / key camera scrolling
 * [ ] lock & hide mouse while rotating
 * [x] Make a new pulsating effect (BOX_PULSE_SIZE)
 * [ ] add fade to title screen
@@ -30,8 +31,6 @@ Logic adjustments or very small features.
 * [x] animation interpolation between frames
 * [ ] split large functions into smaller functions
 * [x] make possible to have totally top-down camera pitch
-* [ ] STOP scrolling when mouse is outside window!!!
-* [ ] STOP scrolling when mouse is on title bar!!!
 * [ ] mouse rotating inverts its origin when too close
 * [ ] small radars have "gaps" in the middle of the dish, cyborgs seem to have too
 * [ ] rain looks wierd when rotating?
@@ -61,6 +60,12 @@ New features requiring more testing and/or design decisions.
 * [ ] lights on tanks
 * [ ] VTOL turn radius
 * [ ] tank turning arcs
+
+Redo mouse / key camera scrolling
+---------------------------------
+
+* [ ] STOP scrolling when mouse is outside window!!!
+* [ ] STOP scrolling when mouse is on title bar!!!
 
 Make startup images 1080p
 -------------------------
