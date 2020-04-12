@@ -81,6 +81,11 @@ Randomize animation frame on eg. oil derricks
 
 Maybe something to do with `psDroid->sDisplay.frameNumber`
 
+Lightposts / lights / lights on tanks
+-------------------------------------
+
+
+
 Links
 -----
 
