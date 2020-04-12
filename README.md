@@ -20,7 +20,7 @@ Logic adjustments or very small features.
 * [ ] add fade to title screen
 * [x] add fade to game start
 * [ ] remove blue box from logo
-* [ ] fix "landing" effect
+* [ ] fix "landing" effect (prolly in setViewPos() - display3d.cpp)
 * [ ] fix blinking of start pad X
 * [ ] make loading effect smoother
 * [ ] make startup images 1080p
