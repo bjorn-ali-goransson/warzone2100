@@ -7,8 +7,10 @@ Compiling / running under WSL
     export DISPLAY=:0
     /root/wz/install/bin/warzone2100
 
-My todos for the game
-=====================
+Fixes
+=====
+
+Logic adjustments or very small features.
 
 * [x] Adjust trackHeight
 * [x] Make zooming "softer"
@@ -22,17 +24,31 @@ My todos for the game
 * [ ] fix blinking of start pad X
 * [ ] make loading effect smoother
 * [ ] make startup images 1080p
-* [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
-* [ ] is there sparks flying currently? or add it ...
+* [ ] remove all "due to a bug in SDL's SDL_ShowCursor()" comments
 * [x] randomize animation frame on eg. oil derricks
 * [x] randomize rotation on radars
 * [x] animation interpolation between frames
-* [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
-* [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
+* [ ] split large functions into smaller functions
+* [x] make possible to have totally top-down camera pitch
 * [ ] STOP scrolling when mouse is outside window!!!
 * [ ] STOP scrolling when mouse is on title bar!!!
 * [ ] mouse rotating inverts its origin when too close
-* [x] make possible to have totally top-down camera pitch
+* [ ] small radars have "gaps" in the middle of the dish, cyborgs seem to have too
+* [ ] rain looks wierd when rotating?
+* [ ] rain stops abruptly
+* [ ] oil derrick should stop at the current frame (not reset frames)
+* [ ] camera position is not saved between games
+* [ ] flying debris should spin, when flying and also change it's spinning when hitting the ground
+
+Features:
+=========
+
+New features requiring more testing and/or design decisions.
+
+* [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
+* [ ] is there sparks flying currently? or add it ...
+* [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
+* [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
 * [ ] either redraw the positional square on the radar (to accurately convey the camera position) or pitch the actual map
 * [ ] what's the meaning of the big X cursor that appears on the sides of the screen?
 * [ ] acc / dec of tanks
@@ -42,14 +58,8 @@ My todos for the game
 * [ ] sky refresh; look to tribal trouble with procedural clouds
 * [ ] lightposts
 * [ ] lights on tanks
-* [ ] small radars have "gaps" in the middle of the dish, cyborgs seem to have too
-* [ ] rain looks wierd when rotating?
-* [ ] rain stops abruptly
-* [ ] oil derrick should stop at the current frame (not reset frames)
-* [ ] camera position is not saved between games
 * [ ] VTOL turn radius
 * [ ] tank turning arcs
-* [ ] flying debris should spin, when flying and also change it's spinning when hitting the ground
 
 Make startup images 1080p
 -------------------------
