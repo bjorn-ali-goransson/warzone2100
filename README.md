@@ -84,7 +84,17 @@ Maybe something to do with `psDroid->sDisplay.frameNumber`
 Lightposts / lights / lights on tanks
 -------------------------------------
 
+![Lamp from Q3](lamp1.gif)
+![Lamp from Q3](lamp2.gif)
+![Lamp from Q3](lamp3.gif)
+![Lamp from Q3](lamp4.gif)
 
+Thrusters
+---------
+
+On the drop ship, for example.
+
+![Thruster from Q3](thruster.gif)
 
 Links
 -----
