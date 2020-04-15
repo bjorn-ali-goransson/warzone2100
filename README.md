@@ -61,6 +61,7 @@ New features requiring more testing and/or design decisions.
 * [ ] lights on tanks
 * [ ] VTOL turn radius
 * [ ] tank turning arcs
+* [ ] move tank with arrow keys / gamepad / first person view / top down / outside tank
 
 Redo mouse / key camera scrolling
 ---------------------------------
