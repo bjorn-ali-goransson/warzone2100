@@ -45,6 +45,7 @@ Features:
 
 New features requiring more testing and/or design decisions.
 
+* [ ] redo rain with OOT style rain. Add some rain drops on camera.
 * [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
 * [ ] is there sparks flying currently? or add it ...
 * [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
