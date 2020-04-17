@@ -15,45 +15,48 @@ Logic adjustments or very small features.
 * [x] Adjust trackHeight
 * [x] Make zooming "softer"
 * [x] Make rotation "softer"
-* [ ] Redo mouse / key camera scrolling (tired of easing functions rn)
+* [ ] Redo mouse / key camera scrolling with vectors
+* [ ] mouse rotating inverts its origin when too close
+* [ ] improve zooming logic
 * [ ] lock & hide mouse while rotating (waiting for rotation logic PR to get merged)
 * [x] Make a new pulsating effect
-* [ ] add fade to title screen (loading screen must be redone)
+* [ ] add fade to title screen?
 * [x] add fade to game start
-* [ ] remove blue box from logo
+* [x] remove blue box from logo
 * [x] fix "landing" effect (prolly in setViewPos() - display3d.cpp)
 * [ ] fix blinking of start pad X
-* [ ] make loading effect smoother (loading screen must be redone)
-* [ ] make startup images 1080pe
+* [ ] fix blinking of power resources
+* [x] make startup images 1080p
 * [ ] remove all "due to a bug in SDL's SDL_ShowCursor()" comments
 * [x] randomize animation frame on eg. oil derricks
 * [x] randomize rotation on radars
 * [x] animation interpolation between frames
 * [ ] split large functions into smaller functions
+* [ ] redo wzSetCursor() usage in renderLoop. add wzApplyCursor() in the end of the main loop and compare it with wz_old_cursor.
 * [x] make possible to have totally top-down camera pitch
-* [ ] mouse rotating inverts its origin when too close
 * [ ] small radars have "gaps" in the middle of the dish, cyborgs seem to have too
-* [ ] rain looks wierd when rotating?
-* [ ] rain stops abruptly
 * [ ] oil derrick should stop at the current frame (not reset frames)
 * [ ] camera position is not saved between games
 * [ ] flying debris should spin, when flying and also change it's spinning when hitting the ground
-* [ ] redo wzSetCursor() usage in renderLoop. add wzApplyCursor() in the end of the main loop and compare it with wz_old_cursor.
+* [ ] what's the meaning of the big X cursor that appears on the sides of the screen?
 
 Features:
 =========
 
 New features requiring more testing and/or design decisions.
 
-* [ ] redo rain with OOT style rain. Add some rain drops on camera.
-* [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
-* [ ] is there sparks flying currently? or add it ...
-* [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
-* [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
-* [ ] either redraw the positional square on the radar (to accurately convey the camera position) or pitch the actual map
-* [ ] what's the meaning of the big X cursor that appears on the sides of the screen?
-* [ ] acc / dec of tanks
 * [ ] projectiles refresh
+* [ ] redo rain with OOT style rain. Add some rain drops on camera.
+* [ ] rain looks wierd when rotating?
+* [ ] rain stops abruptly
+* [ ] fix "move unit here" click effect on cursor, replace with lake ripple + 3d version animated effect of cursor
+* [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
+* [ ] keep the radar static, redraw the positional square on the radar (to accurately convey the camera position)
+* [ ] move tank with arrow keys / gamepad / first person view / top down / outside tank
+* [ ] make loading effect smoother (loading screen must be redone)
+* [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
+* [ ] is there sparks flying currently? or add it ...
+* [ ] acc / dec of tanks
 * [ ] check if models can be exploded upon destruction
 * [ ] UI refresh?
 * [ ] sky refresh; look to tribal trouble with procedural clouds
@@ -61,7 +64,6 @@ New features requiring more testing and/or design decisions.
 * [ ] lights on tanks
 * [ ] VTOL turn radius
 * [ ] tank turning arcs
-* [ ] move tank with arrow keys / gamepad / first person view / top down / outside tank
 
 Redo mouse / key camera scrolling
 ---------------------------------
