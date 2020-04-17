@@ -1,0 +1,64 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Build",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--target",
+				"install"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"type": "shell",
+			"label": "Clean",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--target",
+				"clean"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"type": "process",
+			"label": "Run",
+			"command": "/home/bjorn/wz/install/bin/warzone2100",
+			"options": {
+				"cwd": "/home/bjorn/wz/install/bin"
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Run CAM_2A",
+			"command": "/home/bjorn/wz/install/bin/warzone2100",
+			"args": [
+				"--game=CAM_2A"
+			],
+			"options": {
+				"cwd": "/home/bjorn/wz/install/bin"
+			},
+			"group": "build",
+			"problemMatcher": []
+		}
+	]
+}
