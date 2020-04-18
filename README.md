@@ -15,11 +15,11 @@ Logic adjustments or very small features.
 * [x] Adjust trackHeight
 * [x] Make zooming "softer"
 * [x] Make rotation "softer"
+* [x] Butter smooth zooming
+* [x] Make a new pulsating effect
 * [ ] Redo mouse / key camera scrolling with vectors
 * [ ] mouse rotating inverts its origin when too close
-* [ ] improve zooming logic
 * [ ] lock & hide mouse while rotating (waiting for rotation logic PR to get merged)
-* [x] Make a new pulsating effect
 * [ ] add fade to title screen?
 * [x] add fade to game start
 * [x] remove blue box from logo
