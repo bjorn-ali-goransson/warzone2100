@@ -175,7 +175,7 @@ void drawTest(const glm::mat4 &matrix)
 		GLchar *infoLog = nullptr;
 
 		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-		const char* vertexShaderSource[1] = { "attribute vec4 c; uniform mat4 ModelViewProjectionMatrix; void main(void) { gl_Position = ModelViewProjectionMatrix * c; }" };
+		const char* vertexShaderSource[1] = { "attribute vec4 c; attribute vec2 texCoord; uniform mat4 ModelViewProjectionMatrix; varying vec2 TexCoord; void main(void) { gl_Position = ModelViewProjectionMatrix * c; TexCoord = texCoord; }" };
 		glShaderSource(vertexShader, 1, vertexShaderSource, nullptr);
 		glCompileShader(vertexShader);
 
@@ -191,13 +191,13 @@ void drawTest(const glm::mat4 &matrix)
 				printf("%s\n", infoLog);
 				free(infoLog);
 			}
-			return;
+			exit(1);
 		}
 
 		glAttachShader(shaderProgram, vertexShader);
 
 		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		const char* fragmentShaderSource[1] = { "attribute vec2 texCoord; uniform sampler2D tex; void main(void) { gl_FragColor=texture(tex, texCoord); }" };
+		const char* fragmentShaderSource[1] = { "varying vec2 TexCoord; uniform sampler2D tex; void main(void) { gl_FragColor=texture(tex, TexCoord); }" };
 		glShaderSource(fragmentShader, 1, fragmentShaderSource, nullptr);
 		glCompileShader(fragmentShader);
 
@@ -213,7 +213,7 @@ void drawTest(const glm::mat4 &matrix)
 				printf("%s\n", infoLog);
 				free(infoLog);
 			}
-			return;
+			exit(1);
 		}
 
 		glAttachShader(shaderProgram, fragmentShader);
@@ -230,34 +230,34 @@ void drawTest(const glm::mat4 &matrix)
 			printf("%s\n", infoLog);
 			free(infoLog);
 			exit(1);
-			return;
 		}
 	}
 
 	glUseProgram(shaderProgram);
 
-	pie_SetTexturePage(27);
+	pie_SetTexturePage(iV_GetTexture("page-12-player-buildings.png"));
 
 	static gfx_api::buffer* vrtBuffer = nullptr;
-	static gfx_api::buffer* texBuffer = nullptr;
 	GLint loc;
 
 	loc = glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix");
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * matrix));
 	
-	std::array<Vector3f, 3> vrt = {Vector3f(0,300,0),Vector3f(-100,500,0),Vector3f(100,500,0)};
+	std::array<float, 15> vrt = {
+		0, 300, 0, 0.5, 0,
+		-100, 500, 0, 0, 1,
+		100, 500, 0, 1, 1,
+	};
 	if (!vrtBuffer)
 		vrtBuffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer, gfx_api::context::buffer_storage_hint::stream_draw);
-	vrtBuffer->upload(3 * sizeof(Vector3f), vrt.data());
+	vrtBuffer->upload(5 * 3 * sizeof(float), vrt.data());
 	vrtBuffer->bind();
-	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "c"), 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "c"), 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
+	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "texCoord"), 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
-	std::array<Vector2f, 3> tex = {Vector2f(0.5,0),Vector2f(0, 1),Vector2f(1, 1)};
-	if (!texBuffer)
-		texBuffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer);
-	texBuffer->upload(3 * sizeof(Vector2f), tex.data());
-	texBuffer->bind();
-	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "texCoord"), 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+	if(glGetAttribLocation(shaderProgram, "texCoord") == -1){
+		printf("Not found!\n");
+	}
 
 	glEnableVertexAttribArray(0);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
