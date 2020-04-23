@@ -175,7 +175,9 @@ void drawTest(const glm::mat4 &matrix)
 		GLchar *infoLog = nullptr;
 
 		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-		const char* vertexShaderSource[1] = { "attribute vec4 c; attribute vec2 texCoord; uniform mat4 ModelViewProjectionMatrix; varying vec2 TexCoord; void main(void) { gl_Position = ModelViewProjectionMatrix * c; TexCoord = texCoord; }" };
+		const char* vertexShaderSource[1] = {
+			"attribute vec4 c;attribute vec2 texCoord;uniform mat4 ModelViewProjectionMatrix;varying vec2 TexCoord;void main(void) {gl_Position = ModelViewProjectionMatrix * c;TexCoord = texCoord;}"
+		};
 		glShaderSource(vertexShader, 1, vertexShaderSource, nullptr);
 		glCompileShader(vertexShader);
 
@@ -197,7 +199,9 @@ void drawTest(const glm::mat4 &matrix)
 		glAttachShader(shaderProgram, vertexShader);
 
 		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		const char* fragmentShaderSource[1] = { "varying vec2 TexCoord; uniform sampler2D tex; void main(void) { gl_FragColor=texture(tex, TexCoord); }" };
+		const char* fragmentShaderSource[1] = {
+			"varying vec2 TexCoord;uniform sampler2D tex;void main(void) {gl_FragColor=texture(tex, TexCoord);}"
+		};
 		glShaderSource(fragmentShader, 1, fragmentShaderSource, nullptr);
 		glCompileShader(fragmentShader);
 
