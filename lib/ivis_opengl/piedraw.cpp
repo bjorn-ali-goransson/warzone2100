@@ -160,8 +160,7 @@ static std::vector<SHAPE> shapes;
 
 void drawTest(const glm::mat4 &matrix)
 {
-	glm::mat4 mvpMatrix = pie_PerspectiveGet() * matrix;
-	std::array<Vector3f, 3> vrt = {Vector3f(0,300,0) * mvpMatrix,Vector3f(-100,500,0),Vector3f(100,500,0)};
+	std::array<Vector3f, 3> vrt = {Vector3f(0,300,0),Vector3f(-100,500,0),Vector3f(100,500,0)};
 	pie_SetTexturePage(TEXPAGE_NONE);
 	// pie_SetRendMode(REND_ADDITIVE);
 	// glm::vec4 color(0.5, 0.5, 1, 128.f / 255.f);
@@ -182,7 +181,7 @@ void drawTest(const glm::mat4 &matrix)
 		GLchar *infoLog = nullptr;
 
 		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-		const char* vertexShaderSource[1] = { "attribute vec3 c; void main(void) { gl_Position=vec4(c, 1.0); }" };
+		const char* vertexShaderSource[1] = { "attribute vec4 c; uniform mat4 ModelViewProjectionMatrix; void main(void) { gl_Position = ModelViewProjectionMatrix * c; }" };
 		glShaderSource(vertexShader, 1, vertexShaderSource, nullptr);
 		glCompileShader(vertexShader);
 
@@ -248,6 +247,8 @@ void drawTest(const glm::mat4 &matrix)
 		buffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer, gfx_api::context::buffer_storage_hint::stream_draw);
 	buffer->upload(3 * sizeof(Vector3f), vrt.data());
 	buffer->bind();
+	GLint loc = glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix");
+	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * matrix));
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 	glEnableVertexAttribArray(0);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
