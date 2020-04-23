@@ -158,6 +158,102 @@ static std::vector<ShadowcastingShape> scshapes;
 static std::vector<SHAPE> tshapes;
 static std::vector<SHAPE> shapes;
 
+void drawTest(const glm::mat4 &matrix)
+{
+	glm::mat4 mvpMatrix = pie_PerspectiveGet() * matrix;
+	std::array<Vector3f, 3> vrt = {Vector3f(0,300,0) * mvpMatrix,Vector3f(-100,500,0),Vector3f(100,500,0)};
+	pie_SetTexturePage(TEXPAGE_NONE);
+	// pie_SetRendMode(REND_ADDITIVE);
+	// glm::vec4 color(0.5, 0.5, 1, 128.f / 255.f);
+
+
+	// const auto &program = pie_ActivateShader(SHADER_GENERIC_COLOR, pie_PerspectiveGet() * matrix, color);
+
+	static GLuint shaderProgram = 0;
+
+	if(shaderProgram == 0)
+	{
+		shaderProgram = glCreateProgram();
+		glBindAttribLocation(shaderProgram, 0, "vertex");
+		
+		GLint status;
+		GLint infologLen = 0;
+		GLint charsWritten = 0;
+		GLchar *infoLog = nullptr;
+
+		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+		const char* vertexShaderSource[1] = { "attribute vec3 c; void main(void) { gl_Position=vec4(c, 1.0); }" };
+		glShaderSource(vertexShader, 1, vertexShaderSource, nullptr);
+		glCompileShader(vertexShader);
+
+		glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
+
+		if (!status)
+		{
+			glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &infologLen);
+			if (infologLen > 0)
+			{
+				infoLog = (GLchar *)malloc(infologLen);
+				glGetShaderInfoLog(vertexShader, infologLen, &charsWritten, infoLog);
+				printf("%s\n", infoLog);
+				free(infoLog);
+			}
+			return;
+		}
+
+		glAttachShader(shaderProgram, vertexShader);
+
+		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+		const char* fragmentShaderSource[1] = { "void main(void) { gl_FragColor=vec4(1, 1, 0, 1.0); }" };
+		glShaderSource(fragmentShader, 1, fragmentShaderSource, nullptr);
+		glCompileShader(fragmentShader);
+
+		glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
+
+		if (!status)
+		{
+			glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &infologLen);
+			if (infologLen > 0)
+			{
+				infoLog = (GLchar *)malloc(infologLen);
+				glGetShaderInfoLog(fragmentShader, infologLen, &charsWritten, infoLog);
+				printf("%s\n", infoLog);
+				free(infoLog);
+			}
+			return;
+		}
+
+		glAttachShader(shaderProgram, fragmentShader);
+
+		glLinkProgram(shaderProgram);
+
+		// Check for linkage errors
+		glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
+		if (!status)
+		{
+			glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &infologLen);
+			infoLog = (GLchar *)malloc(infologLen);
+			glGetProgramInfoLog(shaderProgram, infologLen, &charsWritten, infoLog);
+			printf("%s\n", infoLog);
+			free(infoLog);
+			exit(1);
+			return;
+		}
+	}
+
+	glUseProgram(shaderProgram);
+
+	static gfx_api::buffer* buffer = nullptr;
+	if (!buffer)
+		buffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer, gfx_api::context::buffer_storage_hint::stream_draw);
+	buffer->upload(3 * sizeof(Vector3f), vrt.data());
+	buffer->bind();
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+	glEnableVertexAttribArray(0);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDisableVertexAttribArray(0);
+}
+
 static void pie_Draw3DButton(iIMDShape *shape, PIELIGHT teamcolour, const glm::mat4 &matrix)
 {
 	const PIELIGHT colour = WZCOL_WHITE;

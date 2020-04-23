@@ -1132,6 +1132,7 @@ static void drawTiles(iView *player)
 	}
 	displayDelivPoints(viewMatrix);
 	display3DProjectiles(viewMatrix); // may be bucket render implemented
+	drawTest(viewMatrix);
 	wzPerfEnd(PERF_MODEL_INIT);
 
 	wzPerfBegin(PERF_PARTICLES, "3D scene - particles");
