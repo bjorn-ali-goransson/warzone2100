@@ -160,12 +160,6 @@ static std::vector<SHAPE> shapes;
 
 void drawTest(const glm::mat4 &matrix)
 {
-	std::array<Vector3f, 3> vrt = {Vector3f(0,300,0),Vector3f(-100,500,0),Vector3f(100,500,0)};
-	pie_SetTexturePage(TEXPAGE_NONE);
-	// pie_SetRendMode(REND_ADDITIVE);
-	// glm::vec4 color(0.5, 0.5, 1, 128.f / 255.f);
-
-
 	// const auto &program = pie_ActivateShader(SHADER_GENERIC_COLOR, pie_PerspectiveGet() * matrix, color);
 
 	static GLuint shaderProgram = 0;
@@ -203,7 +197,7 @@ void drawTest(const glm::mat4 &matrix)
 		glAttachShader(shaderProgram, vertexShader);
 
 		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		const char* fragmentShaderSource[1] = { "void main(void) { gl_FragColor=vec4(1, 1, 0, 1.0); }" };
+		const char* fragmentShaderSource[1] = { "attribute vec2 texCoord; uniform sampler2D tex; void main(void) { gl_FragColor=texture(tex, texCoord); }" };
 		glShaderSource(fragmentShader, 1, fragmentShaderSource, nullptr);
 		glCompileShader(fragmentShader);
 
@@ -242,14 +236,29 @@ void drawTest(const glm::mat4 &matrix)
 
 	glUseProgram(shaderProgram);
 
-	static gfx_api::buffer* buffer = nullptr;
-	if (!buffer)
-		buffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer, gfx_api::context::buffer_storage_hint::stream_draw);
-	buffer->upload(3 * sizeof(Vector3f), vrt.data());
-	buffer->bind();
-	GLint loc = glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix");
+	pie_SetTexturePage(27);
+
+	static gfx_api::buffer* vrtBuffer = nullptr;
+	static gfx_api::buffer* texBuffer = nullptr;
+	GLint loc;
+
+	loc = glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix");
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * matrix));
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+	
+	std::array<Vector3f, 3> vrt = {Vector3f(0,300,0),Vector3f(-100,500,0),Vector3f(100,500,0)};
+	if (!vrtBuffer)
+		vrtBuffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer, gfx_api::context::buffer_storage_hint::stream_draw);
+	vrtBuffer->upload(3 * sizeof(Vector3f), vrt.data());
+	vrtBuffer->bind();
+	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "c"), 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	std::array<Vector2f, 3> tex = {Vector2f(0.5,0),Vector2f(0, 1),Vector2f(1, 1)};
+	if (!texBuffer)
+		texBuffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer);
+	texBuffer->upload(3 * sizeof(Vector2f), tex.data());
+	texBuffer->bind();
+	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "texCoord"), 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+
 	glEnableVertexAttribArray(0);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glDisableVertexAttribArray(0);
