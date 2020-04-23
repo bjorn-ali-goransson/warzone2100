@@ -185,14 +185,12 @@ void drawTest(const glm::mat4 &matrix)
 
 		if (!status)
 		{
+			printf("Error compiling vertex shader\n");
 			glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &infologLen);
-			if (infologLen > 0)
-			{
-				infoLog = (GLchar *)malloc(infologLen);
-				glGetShaderInfoLog(vertexShader, infologLen, &charsWritten, infoLog);
-				printf("%s\n", infoLog);
-				free(infoLog);
-			}
+			infoLog = (GLchar *)malloc(infologLen);
+			glGetShaderInfoLog(vertexShader, infologLen, &charsWritten, infoLog);
+			printf("%s\n", infoLog);
+			free(infoLog);
 			exit(1);
 		}
 
@@ -209,14 +207,12 @@ void drawTest(const glm::mat4 &matrix)
 
 		if (!status)
 		{
+			printf("Error compiling fragment shader\n");
 			glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &infologLen);
-			if (infologLen > 0)
-			{
-				infoLog = (GLchar *)malloc(infologLen);
-				glGetShaderInfoLog(fragmentShader, infologLen, &charsWritten, infoLog);
-				printf("%s\n", infoLog);
-				free(infoLog);
-			}
+			infoLog = (GLchar *)malloc(infologLen);
+			glGetShaderInfoLog(fragmentShader, infologLen, &charsWritten, infoLog);
+			printf("%s\n", infoLog);
+			free(infoLog);
 			exit(1);
 		}
 
@@ -228,6 +224,7 @@ void drawTest(const glm::mat4 &matrix)
 		glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
 		if (!status)
 		{
+			printf("Error linking program\n");
 			glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &infologLen);
 			infoLog = (GLchar *)malloc(infologLen);
 			glGetProgramInfoLog(shaderProgram, infologLen, &charsWritten, infoLog);
@@ -242,10 +239,7 @@ void drawTest(const glm::mat4 &matrix)
 	pie_SetTexturePage(iV_GetTexture("page-12-player-buildings.png"));
 
 	static gfx_api::buffer* vrtBuffer = nullptr;
-	GLint loc;
-
-	loc = glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * matrix));
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * matrix));
 	
 	std::array<float, 15> vrt = {
 		0, 300, 0, 0.5, 0,
@@ -258,10 +252,6 @@ void drawTest(const glm::mat4 &matrix)
 	vrtBuffer->bind();
 	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "c"), 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
 	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "texCoord"), 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-
-	if(glGetAttribLocation(shaderProgram, "texCoord") == -1){
-		printf("Not found!\n");
-	}
 
 	glEnableVertexAttribArray(0);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
