@@ -160,8 +160,6 @@ static std::vector<SHAPE> shapes;
 
 void drawTest(const glm::mat4 &matrix)
 {
-	// const auto &program = pie_ActivateShader(SHADER_GENERIC_COLOR, pie_PerspectiveGet() * matrix, color);
-
 	static GLuint shaderProgram = 0;
 
 	if(shaderProgram == 0)
@@ -237,6 +235,7 @@ void drawTest(const glm::mat4 &matrix)
 	glUseProgram(shaderProgram);
 
 	pie_SetTexturePage(iV_GetTexture("page-12-player-buildings.png"));
+	glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 0);
 
 	static gfx_api::buffer* vrtBuffer = nullptr;
 	glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * matrix));
