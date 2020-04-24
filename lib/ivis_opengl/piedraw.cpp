@@ -250,9 +250,10 @@ void drawTest(const glm::mat4 &matrix)
 	vrtBuffer->upload(5 * 3 * sizeof(float), vrt.data());
 	vrtBuffer->bind();
 	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "c"), 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
+	glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "c"));
 	glVertexAttribPointer(glGetAttribLocation(shaderProgram, "texCoord"), 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "texCoord"));
 
-	glEnableVertexAttribArray(0);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glDisableVertexAttribArray(0);
 }
