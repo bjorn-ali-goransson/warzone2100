@@ -32,7 +32,7 @@ Logic adjustments or very small features.
 * [x] randomize rotation on radars
 * [x] animation interpolation between frames
 * [ ] split large functions into smaller functions
-* [ ] redo wzSetCursor() usage in renderLoop. add wzApplyCursor() in the end of the main loop and compare it with wz_old_cursor.
+* [x] redo wzSetCursor() usage in renderLoop. add wzApplyCursor() in the end of the main loop and compare it with wz_old_cursor.
 * [x] make possible to have totally top-down camera pitch
 * [ ] small radars have "gaps" in the middle of the dish, cyborgs seem to have too
 * [ ] oil derrick should stop at the current frame (not reset frames)
@@ -109,7 +109,8 @@ Projectiles refresh
 * [ ] remove machine gun fire projectiles. speed should be 100!
 * [ ] somewhere it said that the Muzzle flash has too fast .... smk of PIE flag (4000?) to be displayed.
 * [ ] projectiles should be protracted
-* [ ] smoke trails from bullets, see uncharted 4
+* [ ] rockets should keep accelerating
+* [x] smoke trails
 * [ ] muzzle flashes
 
 Links
