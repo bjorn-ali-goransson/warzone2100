@@ -7,6 +7,15 @@ Compiling / running under WSL
     export DISPLAY=:0
     /root/wz/install/bin/warzone2100
 
+Unsorted
+========
+
+* [ ] zoom acceleration
+* [ ] procedural clouds, skybox, sunset etc
+* [ ] shaders with gradients
+* [ ] construction lines
+
+
 Fixes
 =====
 
