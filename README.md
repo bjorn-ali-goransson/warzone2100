@@ -1,19 +1,13 @@
-Compiling / running under WSL
-=====
-
-    sudo -i
-    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX:PATH=~/wz/install -GNinja -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
-    cmake --build build --target install
-    export DISPLAY=:0
-    /root/wz/install/bin/warzone2100
-
 Unsorted
 ========
 
-* [ ] zoom acceleration
-* [ ] procedural clouds, skybox, sunset etc
+* [ ] zoom acceleration at high altitudes
+* [ ] procedural clouds, skybox, sunset etc https://github.com/shff/opengl_sky
 * [ ] shaders with gradients
 * [ ] construction lines
+* [ ] add noise to terrain mipmap
+* [ ] water reflecting sky
+* [ ] redo terrain height tracking AGAIN ...
 
 
 Fixes
