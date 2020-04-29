@@ -2,7 +2,7 @@ Unsorted
 ========
 
 * [ ] zoom acceleration at high altitudes
-* [ ] procedural clouds, skybox, sunset etc https://github.com/shff/opengl_sky
+* [ ] procedural clouds, skybox, sunset, MOON, etc https://github.com/shff/opengl_sky
 * [ ] shaders with gradients
 * [ ] construction lines
 * [ ] add noise to terrain mipmap
