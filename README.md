@@ -57,7 +57,7 @@ New features requiring more testing and/or design decisions.
 * [x] highlight units by [stencil testing](https://learnopengl.com/Advanced-OpenGL/Stencil-testing)
 * [ ] keep the radar static, redraw the positional square on the radar (to accurately convey the camera position)
 * [ ] move tank with arrow keys / gamepad / first person view / top down / outside tank
-* [ ] make loading effect smoother (loading screen must be redone)
+* [ ] remake loading screen with the animated GIFs
 * [ ] replace flash 2D blobs on eg power plants with effects (if possible? or improve texture quality)
 * [ ] is there sparks flying currently? or add it ...
 * [ ] acc / dec of tanks
