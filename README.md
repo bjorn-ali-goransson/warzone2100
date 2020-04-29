@@ -8,6 +8,7 @@ Unsorted
 * [ ] add noise to terrain mipmap
 * [ ] water reflecting sky
 * [ ] redo terrain height tracking AGAIN ...
+* [ ] explosions with pioneering black smoke trails
 
 
 Fixes
