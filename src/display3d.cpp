@@ -3880,7 +3880,7 @@ static void addConstructionLine(DROID *psDroid, STRUCTURE *psStructure, const gl
 	int amount = 800 * constructPoints * (graphicsTime - psDroid->actionStarted) / GAME_TICKS_PER_SEC;
 
 	Vector3i each;
-	auto getPoint = [&](uint32_t c) {
+	auto getPoint = [&](uint32_t c) {//
 		uint32_t t = (amount + c)/1000;
 		float s = (amount + c)%1000*.001f;
 		unsigned pointIndexA = randHash({psDroid->id, psStructure->id, psDroid->actionStarted, t, c}) % psStructure->sDisplay.imd->points.size();
