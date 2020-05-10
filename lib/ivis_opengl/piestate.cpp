@@ -742,7 +742,7 @@ bool pie_LoadShaders()
 	ASSERT_OR_RETURN(false, result && ++shaderEnum == SHADER_GFX_TEXT, "Failed to load textured gfx shader");
 
 	debug(LOG_3D, "Loading shader: SHADER_GENERIC_COLOR");
-	result = pie_LoadShader(version, "generic color program", "shaders/generic.vert", "shaders/rect.frag", { "ModelViewProjectionMatrix", "color" });
+	result = pie_LoadShader(version, "generic color program", "shaders/generic.vert", "shaders/rect.frag", { "ModelViewProjectionMatrix", "color", "structurePosition" });
 	ASSERT_OR_RETURN(false, result && ++shaderEnum == SHADER_GENERIC_COLOR, "Failed to load generic color shader");
 
 	debug(LOG_3D, "Loading shader: SHADER_LINE");

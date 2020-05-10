@@ -3912,6 +3912,6 @@ static void addConstructionLine(DROID *psDroid, STRUCTURE *psStructure, const gl
 	}
 
 	PIELIGHT colour = psDroid->action == DACTION_DEMOLISH? WZCOL_DEMOLISH_BEAM : WZCOL_CONSTRUCTOR_BEAM;
-	pie_TransColouredTriangle({pt0, pt1, pt2}, colour, viewMatrix);
-	pie_TransColouredTriangle({pt0, pt2, pt1}, colour, viewMatrix);
+	pie_TransColouredTriangle({pt0, pt1, pt2}, psStructure->pos, colour, viewMatrix);
+	pie_TransColouredTriangle({pt0, pt2, pt1}, psStructure->pos, colour, viewMatrix);
 }
