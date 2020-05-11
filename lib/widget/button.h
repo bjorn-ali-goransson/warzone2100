@@ -33,6 +33,16 @@
 #include <string>
 
 
+class W_SCROLLPANE : public WIDGET
+{
+public:
+	W_SCROLLPANE(W_SCROLLPANEINIT const *init);
+	W_SCROLLPANE(WIDGET *parent);
+
+	void display(int xOffset, int yOffset) override;
+};
+
+
 class W_BUTTON : public WIDGET
 {
 

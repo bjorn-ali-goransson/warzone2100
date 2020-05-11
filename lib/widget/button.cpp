@@ -31,6 +31,25 @@
 #include "lib/gamelib/gtime.h"
 
 
+
+W_SCROLLPANEINIT::W_SCROLLPANEINIT()
+{}
+
+W_SCROLLPANE::W_SCROLLPANE(W_SCROLLPANEINIT const *init)
+	: WIDGET(init, WIDG_SCROLLPANE)
+{
+}
+
+void W_SCROLLPANE::display(int xOffset, int yOffset)
+{
+	int x0 = x() + xOffset;
+	int y0 = y() + yOffset;
+
+	// disabled, render something over it!
+	iV_TransBoxFill(x0, y0, x0 + width(), y0 + height());
+}
+
+
 W_BUTINIT::W_BUTINIT()
 	: pText(nullptr)
 	, FontID(font_regular)

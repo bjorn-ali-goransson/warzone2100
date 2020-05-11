@@ -136,6 +136,44 @@ void startTitleMenu()
 	addTopForm(false);
 	addBottomForm();
 
+
+	W_SCROLLPANEINIT sScrollPaneInit;
+
+	sScrollPaneInit.formID = FRONTEND_BOTFORM;
+	sScrollPaneInit.id = 9990;
+	sScrollPaneInit.x = (short)20;
+	sScrollPaneInit.y = (short)40;
+
+	sScrollPaneInit.width = 100;
+	sScrollPaneInit.height = 100;
+
+	W_SCROLLPANE *sScrollPane = new W_SCROLLPANE(&sScrollPaneInit);
+	widgGetFromID(psWScreen, FRONTEND_BOTFORM)->attach(sScrollPane);
+
+	W_BUTINIT sButInit;
+
+	sButInit.formID = 9990;
+	sButInit.id = 9991;
+	sButInit.x = (short)20;
+	sButInit.y = (short)40;
+
+	sButInit.style |= WBUT_TXTCENTRE;
+	sButInit.width = FRONTEND_BUTWIDTH;
+
+	sButInit.UserData = 0; // store disable state
+	sButInit.pUserData = new DisplayTextOptionCache();
+	sButInit.onDelete = [](WIDGET *psWidget) {
+		assert(psWidget->pUserData != nullptr);
+		delete static_cast<DisplayTextOptionCache *>(psWidget->pUserData);
+		psWidget->pUserData = nullptr;
+	};
+
+	sButInit.height = FRONTEND_BUTHEIGHT;
+	sButInit.pDisplay = displayTextOption;
+	sButInit.FontID = font_large;
+	sButInit.pText = "Test";
+	widgAddButton(psWScreen, &sButInit);
+
 	addTextButton(FRONTEND_SINGLEPLAYER, FRONTEND_POS2X, FRONTEND_POS2Y, _("Single Player"), WBUT_TXTCENTRE);
 	addTextButton(FRONTEND_MULTIPLAYER, FRONTEND_POS3X, FRONTEND_POS3Y, _("Multi Player"), WBUT_TXTCENTRE);
 	addTextButton(FRONTEND_TUTORIAL, FRONTEND_POS4X, FRONTEND_POS4Y, _("Tutorial"), WBUT_TXTCENTRE);

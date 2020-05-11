@@ -477,8 +477,10 @@ void widgDelete(W_SCREEN *psScreen, UDWORD id)
 /* Find a widget on a form from its id number */
 static WIDGET *widgFormGetFromID(WIDGET *widget, UDWORD id)
 {
+	printf("Checking widget with id %i (== %i)\n", (int)widget->id, id);
 	if (widget->id == id)
 	{
+		printf("Found!\n");
 		return widget;
 	}
 	WIDGET::Children const &c = widget->children();

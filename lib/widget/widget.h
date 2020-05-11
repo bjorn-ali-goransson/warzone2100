@@ -146,6 +146,12 @@ struct W_LABINIT : public W_INIT
 	enum iV_fonts           FontID;			///< ID of the IVIS font to use for this widget.
 };
 
+/** Scroll pane initialisation structure */
+struct W_SCROLLPANEINIT : public W_INIT
+{
+	W_SCROLLPANEINIT();
+};
+
 /** Button initialisation structure */
 struct W_BUTINIT : public W_INIT
 {
