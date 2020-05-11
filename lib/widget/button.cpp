@@ -25,19 +25,33 @@
 #include "widget.h"
 #include "widgint.h"
 #include "button.h"
+#include "slider.h"
 #include "form.h"
 #include "tip.h"
 #include "lib/ivis_opengl/pieblitfunc.h"
 #include "lib/gamelib/gtime.h"
 
-
-
 W_SCROLLPANEINIT::W_SCROLLPANEINIT()
 {}
+
+extern IMAGEFILE *IntImages;
 
 W_SCROLLPANE::W_SCROLLPANE(W_SCROLLPANEINIT const *init)
 	: WIDGET(init, WIDG_SCROLLPANE)
 {
+	W_SLDINIT sSldInit;
+	sSldInit.formID		= init->id;
+	sSldInit.id			= 9995;
+	sSldInit.x			= (short)0;
+	sSldInit.y			= (short)40;
+	sSldInit.width		= 179;
+	sSldInit.height		= 18;
+	sSldInit.numStops	= (UBYTE) 20;
+	sSldInit.barSize	= 18;
+	sSldInit.pos		= (UBYTE) 2;
+	// sSldInit.pDisplay	= displayBigSlider;
+	// sSldInit.pCallback  = intUpdateQuantitySlider;
+	scrollBar = new W_SLIDER(&sSldInit);
 }
 
 void W_SCROLLPANE::display(int xOffset, int yOffset)
@@ -47,6 +61,31 @@ void W_SCROLLPANE::display(int xOffset, int yOffset)
 
 	// disabled, render something over it!
 	iV_TransBoxFill(x0, y0, x0 + width(), y0 + height());
+
+	xOffset += x();
+	yOffset += y();
+
+	// Display the widgets on this widget.
+	for (WIDGET::Children::const_iterator i = childWidgets.begin(); i != childWidgets.end(); ++i)
+	{
+		WIDGET *psCurr = *i;
+
+		// Skip any hidden widgets.
+		if (!psCurr->visible())
+		{
+			continue;
+		}
+
+		psCurr->displayRecursive(xOffset, yOffset);
+	}
+
+	int x = xOffset + scrollBar->x();
+	int y = yOffset + scrollBar->y();
+
+	iV_DrawImage(IntImages, 142, x, y);			// draw bdrop
+
+	int sx = (scrollBar->width() - 3 - scrollBar->barSize) * scrollBar->pos / scrollBar->numStops;  // determine pos.
+	iV_DrawImage(IntImages, 194, x + 3 + sx, y + 3);
 }
 
 

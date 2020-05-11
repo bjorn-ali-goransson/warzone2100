@@ -231,10 +231,11 @@ public:
 	void runRecursive(W_CONTEXT *psContext);
 	void processCallbacksRecursive(W_CONTEXT *psContext);
 	void displayRecursive(int xOffset, int yOffset);  ///< Display this widget, and all visible children.
-private:
+protected:
 
 	WIDGET                 *parentWidget;           ///< Parent widget.
 	std::vector<WIDGET *>   childWidgets;           ///< Child widgets. Will be deleted if we are deleted.
+private:
 
 	WzRect                  dim;
 

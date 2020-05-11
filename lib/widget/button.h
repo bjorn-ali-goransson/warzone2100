@@ -40,6 +40,7 @@ public:
 	W_SCROLLPANE(WIDGET *parent);
 
 	void display(int xOffset, int yOffset) override;
+	W_SLIDER *scrollBar;
 };
 
 

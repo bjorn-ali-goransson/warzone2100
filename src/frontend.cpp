@@ -158,7 +158,7 @@ void startTitleMenu()
 	sButInit.y = (short)40;
 
 	sButInit.style |= WBUT_TXTCENTRE;
-	sButInit.width = FRONTEND_BUTWIDTH;
+	sButInit.width = 0;
 
 	sButInit.UserData = 0; // store disable state
 	sButInit.pUserData = new DisplayTextOptionCache();
@@ -168,7 +168,7 @@ void startTitleMenu()
 		psWidget->pUserData = nullptr;
 	};
 
-	sButInit.height = FRONTEND_BUTHEIGHT;
+	sButInit.height = 0;
 	sButInit.pDisplay = displayTextOption;
 	sButInit.FontID = font_large;
 	sButInit.pText = "Test";
@@ -2256,8 +2256,10 @@ void addFESlider(UDWORD id, UDWORD parent, UDWORD x, UDWORD y, UDWORD stops, UDW
 	sSldInit.y			= (short)y;
 	sSldInit.width		= iV_GetImageWidth(IntImages, IMAGE_SLIDER_BIG);
 	sSldInit.height		= iV_GetImageHeight(IntImages, IMAGE_SLIDER_BIG);
+	printf("%i, %i\n", (int)sSldInit.width, (int)sSldInit.height);
 	sSldInit.numStops	= (UBYTE) stops;
 	sSldInit.barSize	= iV_GetImageHeight(IntImages, IMAGE_SLIDER_BIG);
+	printf("%i\n", (int)sSldInit.barSize);
 	sSldInit.pos		= (UBYTE) pos;
 	sSldInit.pDisplay	= displayBigSlider;
 	sSldInit.pCallback  = intUpdateQuantitySlider;

@@ -400,8 +400,8 @@ static bool widgAddWidget(W_SCREEN *psScreen, W_INIT const *psInit, WIDGET *widg
 	ASSERT_OR_RETURN(false, widget != nullptr, "Invalid widget");
 	ASSERT_OR_RETURN(false, psScreen != nullptr, "Invalid screen pointer");
 	ASSERT_OR_RETURN(false, !widgCheckIDForm(psScreen->psForm, psInit->id), "ID number has already been used (%d)", psInit->id);
-	// Find the form to add the widget to.
-	W_FORM *psParent;
+	// Find the form (or any widget) to add the widget to.
+	WIDGET *psParent;
 	if (psInit->formID == 0)
 	{
 		/* Add to the base form */
@@ -409,9 +409,9 @@ static bool widgAddWidget(W_SCREEN *psScreen, W_INIT const *psInit, WIDGET *widg
 	}
 	else
 	{
-		psParent = (W_FORM *)widgGetFromID(psScreen, psInit->formID);
+		psParent = (WIDGET *)widgGetFromID(psScreen, psInit->formID);
 	}
-	ASSERT_OR_RETURN(false, psParent != nullptr && psParent->type == WIDG_FORM, "Could not find parent form from formID");
+	ASSERT_OR_RETURN(false, psParent != nullptr && (psParent->type == WIDG_FORM || psParent->type == WIDG_SCROLLPANE), "Could not find parent form from formID");
 
 	psParent->attach(widget);
 	return true;
@@ -477,10 +477,8 @@ void widgDelete(W_SCREEN *psScreen, UDWORD id)
 /* Find a widget on a form from its id number */
 static WIDGET *widgFormGetFromID(WIDGET *widget, UDWORD id)
 {
-	printf("Checking widget with id %i (== %i)\n", (int)widget->id, id);
 	if (widget->id == id)
 	{
-		printf("Found!\n");
 		return widget;
 	}
 	WIDGET::Children const &c = widget->children();
@@ -974,6 +972,11 @@ void WIDGET::displayRecursive(int xOffset, int yOffset)
 	}
 
 	if (type == WIDG_FORM && ((W_FORM *)this)->disableChildren)
+	{
+		return;
+	}
+
+	if (type == WIDG_SCROLLPANE)
 	{
 		return;
 	}
