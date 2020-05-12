@@ -136,6 +136,7 @@ void startTitleMenu()
 	addTopForm(false);
 	addBottomForm();
 
+	sliderEnableDrag(true);
 
 	W_SCROLLPANEINIT sScrollPaneInit;
 
@@ -2256,10 +2257,8 @@ void addFESlider(UDWORD id, UDWORD parent, UDWORD x, UDWORD y, UDWORD stops, UDW
 	sSldInit.y			= (short)y;
 	sSldInit.width		= iV_GetImageWidth(IntImages, IMAGE_SLIDER_BIG);
 	sSldInit.height		= iV_GetImageHeight(IntImages, IMAGE_SLIDER_BIG);
-	printf("%i, %i\n", (int)sSldInit.width, (int)sSldInit.height);
 	sSldInit.numStops	= (UBYTE) stops;
 	sSldInit.barSize	= iV_GetImageHeight(IntImages, IMAGE_SLIDER_BIG);
-	printf("%i\n", (int)sSldInit.barSize);
 	sSldInit.pos		= (UBYTE) pos;
 	sSldInit.pDisplay	= displayBigSlider;
 	sSldInit.pCallback  = intUpdateQuantitySlider;

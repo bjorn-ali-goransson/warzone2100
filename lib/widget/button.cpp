@@ -43,7 +43,7 @@ W_SCROLLPANE::W_SCROLLPANE(W_SCROLLPANEINIT const *init)
 	sSldInit.formID		= init->id;
 	sSldInit.id			= 9995;
 	sSldInit.x			= (short)0;
-	sSldInit.y			= (short)40;
+	sSldInit.y			= (short)300;
 	sSldInit.width		= 179;
 	sSldInit.height		= 18;
 	sSldInit.numStops	= (UBYTE) 20;
@@ -52,6 +52,12 @@ W_SCROLLPANE::W_SCROLLPANE(W_SCROLLPANEINIT const *init)
 	// sSldInit.pDisplay	= displayBigSlider;
 	// sSldInit.pCallback  = intUpdateQuantitySlider;
 	scrollBar = new W_SLIDER(&sSldInit);
+}
+
+
+void W_SCROLLPANE::run(W_CONTEXT *psContext)
+{
+	scrollBar->run(psContext);
 }
 
 void W_SCROLLPANE::display(int xOffset, int yOffset)
@@ -76,7 +82,7 @@ void W_SCROLLPANE::display(int xOffset, int yOffset)
 			continue;
 		}
 
-		psCurr->displayRecursive(xOffset, yOffset);
+		psCurr->displayRecursive(xOffset, yOffset - scrollBar->pos);
 	}
 
 	int x = xOffset + scrollBar->x();
