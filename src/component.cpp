@@ -42,6 +42,7 @@
 	#define GLM_ENABLE_EXPERIMENTAL
 #endif
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/matrix_interpolation.hpp>
 
 #define GetRadius(x) ((x)->sradius)
 
@@ -444,10 +445,85 @@ static bool displayCompObj(DROID *psDroid, bool bButton, const glm::mat4 &viewMa
 		modelMatrix *= glm::translate(glm::vec3(0.f, -world_coord(1) / 2.3f, 0.f));
 	}
 
+	glm::mat4 modelMatrixAnimated = modelMatrix;
+	int elapsed;
+	int frame;
+	float frameFraction;
+	int nextFrame;
+	ANIMFRAME state;
+	ANIMFRAME nextState;
 	iIMDShape *psShapeProp = (leftFirst ? getLeftPropulsionIMD(psDroid) : getRightPropulsionIMD(psDroid));
 	if (psShapeProp)
 	{
-		if (pie_Draw3DShape(psShapeProp, 0, colour, brightness, pieFlag, iPieData, viewMatrix * modelMatrix))
+		if (psShapeProp->objanimframes)
+		{
+			elapsed = graphicsTime;
+			if (elapsed < 0)
+			{
+				elapsed = 0; // Animation hasn't started yet.
+			}
+			frame = (elapsed / psShapeProp->objanimtime) % psShapeProp->objanimframes;
+			frameFraction = fmod(elapsed / (float)psShapeProp->objanimtime, psShapeProp->objanimframes) - frame;
+			nextFrame = (frame + 1) % psShapeProp->objanimframes;
+			ASSERT(frame < psShapeProp->objanimframes, "Bad index %d >= %d", frame, psShapeProp->objanimframes);
+
+			state = psShapeProp->objanimdata.at(frame);
+			nextState = psShapeProp->objanimdata.at(nextFrame);
+
+			if (state.scale.x == -1.0f) // disabled frame, for implementing key frame animation
+			{
+				return false;
+			}
+			
+			modelMatrixAnimated = viewMatrix *
+					glm::interpolate(glm::translate(glm::vec3(state.pos)), glm::translate(glm::vec3(nextState.pos)), frameFraction) *
+					glm::rotate(RADIANS(interpolateAngleDegrees(state.rot.pitch / DEG(1), nextState.rot.pitch / DEG(1), frameFraction)), glm::vec3(1.f, 0.f, 0.f)) *
+					glm::rotate(RADIANS(interpolateAngleDegrees(state.rot.direction / DEG(1), nextState.rot.direction / DEG(1), frameFraction)), glm::vec3(0.f, 1.f, 0.f)) *
+					glm::rotate(RADIANS(interpolateAngleDegrees(state.rot.roll / DEG(1), nextState.rot.roll / DEG(1), frameFraction)), glm::vec3(0.f, 0.f, 1.f)) *
+					glm::scale(state.scale) *
+					modelMatrixAnimated;
+		}
+		if (pie_Draw3DShape(psShapeProp, 0, colour, brightness, pieFlag, iPieData, modelMatrixAnimated))
+		{
+			didDrawSomething = true;
+		}
+	}
+
+	// now render the other propulsion side
+	modelMatrixAnimated = modelMatrix;
+	psShapeProp = (leftFirst ? getRightPropulsionIMD(psDroid) : getLeftPropulsionIMD(psDroid));
+	if (psShapeProp)
+	{
+		if (psShapeProp->objanimframes)
+		{
+			elapsed = graphicsTime;
+			if (elapsed < 0)
+			{
+				elapsed = 0; // Animation hasn't started yet.
+			}
+			frame = (elapsed / psShapeProp->objanimtime) % psShapeProp->objanimframes;
+			frameFraction = fmod(elapsed / (float)psShapeProp->objanimtime, psShapeProp->objanimframes) - frame;
+			nextFrame = (frame + 1) % psShapeProp->objanimframes;
+			ASSERT(frame < psShapeProp->objanimframes, "Bad index %d >= %d", frame, psShapeProp->objanimframes);
+
+			state = psShapeProp->objanimdata.at(frame);
+			nextState = psShapeProp->objanimdata.at(nextFrame);
+
+			if (state.scale.x == -1.0f) // disabled frame, for implementing key frame animation
+			{
+				return false;
+			}
+			
+			modelMatrixAnimated = viewMatrix *
+					glm::interpolate(glm::translate(glm::vec3(state.pos)), glm::translate(glm::vec3(nextState.pos)), frameFraction) *
+					glm::rotate(RADIANS(interpolateAngleDegrees(state.rot.pitch / DEG(1), nextState.rot.pitch / DEG(1), frameFraction)), glm::vec3(1.f, 0.f, 0.f)) *
+					glm::rotate(RADIANS(interpolateAngleDegrees(state.rot.direction / DEG(1), nextState.rot.direction / DEG(1), frameFraction)), glm::vec3(0.f, 1.f, 0.f)) *
+					glm::rotate(RADIANS(interpolateAngleDegrees(state.rot.roll / DEG(1), nextState.rot.roll / DEG(1), frameFraction)), glm::vec3(0.f, 0.f, 1.f)) *
+					glm::scale(state.scale) *
+					modelMatrixAnimated;
+		}
+
+		if (pie_Draw3DShape(psShapeProp, 0, colour, brightness, pieFlag, iPieData, modelMatrixAnimated))
 		{
 			didDrawSomething = true;
 		}
@@ -766,16 +842,6 @@ static bool displayCompObj(DROID *psDroid, bool bButton, const glm::mat4 &viewMa
 	{
 		pieFlag  &= ~pie_TRANSLUCENT;
 		iPieData = 0;
-	}
-
-	// now render the other propulsion side
-	psShapeProp = (leftFirst ? getRightPropulsionIMD(psDroid) : getLeftPropulsionIMD(psDroid));
-	if (psShapeProp)
-	{
-		if (pie_Draw3DShape(psShapeProp, 0, colour, brightness, pieFlag, iPieData, viewModelMatrix)) // Safe to use viewModelMatrix because modelView has not been changed since it was calculated
-		{
-			didDrawSomething = true;
-		}
 	}
 
 	return didDrawSomething;
