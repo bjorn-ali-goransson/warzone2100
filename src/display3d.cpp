@@ -84,6 +84,7 @@
 #include "cmddroid.h"
 #include "terrain.h"
 #include "warzoneconfig.h"
+#include "flowfield.h"
 
 /********************  Prototypes  ********************/
 
@@ -938,6 +939,8 @@ void draw3DScene()
 	{
 		showDroidPaths();
 	}
+
+	flowfield::debugDraw();
 
 	wzPerfEnd(PERF_MISC);
 }

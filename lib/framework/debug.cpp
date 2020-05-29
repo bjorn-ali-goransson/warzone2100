@@ -106,6 +106,7 @@ static const char *code_part_names[] =
 	"popup",
 	"console",
 	"activity",
+	"flowfield",
 	"last"
 };
 
@@ -312,8 +313,9 @@ void debug_init()
 # if defined(DEBUG_MEMORY)
 	tmpDbgFlag |= _CRTDBG_CHECK_ALWAYS_DF; // Check every (de)allocation
 # endif // DEBUG_MEMORY
-	tmpDbgFlag |= _CRTDBG_ALLOC_MEM_DF; // Check allocations
-	tmpDbgFlag |= _CRTDBG_LEAK_CHECK_DF; // Check for memleaks
+	// TODO: Disabled because apparently in WZ team noone cares about non-freed-before-application-exit memory, and it spams my debug console.
+	//tmpDbgFlag |= _CRTDBG_ALLOC_MEM_DF; // Check allocations
+	//tmpDbgFlag |= _CRTDBG_LEAK_CHECK_DF; // Check for memleaks
 	_CrtSetDbgFlag(tmpDbgFlag);
 #endif // WZ_CC_MSVC && DEBUG
 

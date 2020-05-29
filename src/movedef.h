@@ -27,6 +27,7 @@
 #include "lib/framework/vector.h"
 
 #include <vector>
+#include <deque>
 
 enum MOVE_STATUS
 {
@@ -46,6 +47,7 @@ struct MOVE_CONTROL
 	MOVE_STATUS Status = MOVEINACTIVE;    ///< Inactive, Navigating or moving point to point status
 	int pathIndex = 0;                    ///< Position in asPath
 	std::vector<Vector2i> asPath;         ///< Pointer to list of block X,Y map coordinates.
+	std::deque<unsigned int> portalPath;  ///< Sequence of portals to visit (flowfield)
 
 	Vector2i destination = Vector2i(0, 0);                 ///< World coordinates of movement destination
 	Vector2i src = Vector2i(0, 0);

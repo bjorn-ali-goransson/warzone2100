@@ -553,7 +553,8 @@
 #      define DEBUG
 #      define _CRTDBG_MAP_ALLOC
 #      include <stdlib.h>
-#      include <crtdbg.h>
+// TODO: Disabled because apparently in WZ team noone cares about non-freed-before-application-exit memory, and it spams my debug console.
+// #      include <crtdbg.h>
 #    endif /* _DEBUG */
 // Required for alloca
 #    include <malloc.h>

@@ -90,6 +90,7 @@
 #include "ingameop.h"
 #include "qtscript.h"
 #include "template.h"
+#include "flowfield.h"
 
 #include <algorithm>
 
@@ -767,6 +768,7 @@ void systemShutdown()
 	notificationsShutDown();
 	widgShutDown();
 	fpathShutdown();
+	flowfield::destroy();
 	mapShutdown();
 	debug(LOG_MAIN, "shutting down everything else");
 	pal_ShutDown();		// currently unused stub
@@ -1114,6 +1116,7 @@ bool stageTwoInitialise()
 	{
 		return false;
 	}
+    flowfield::init();
 
 	debug(LOG_MAIN, "stageTwoInitialise: done");
 
@@ -1129,6 +1132,7 @@ bool stageTwoShutDown()
 	debug(LOG_WZ, "== stageTwoShutDown ==");
 
 	fpathShutdown();
+    flowfield::destroy();
 
 	cdAudio_Stop();
 
@@ -1219,6 +1223,8 @@ bool stageThreeInitialise()
 	{
 		return false;
 	}
+
+	flowfield::init();
 
 	mapInit();
 	gridReset();

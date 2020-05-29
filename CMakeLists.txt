@@ -36,6 +36,11 @@ endif()
 # CXX Standard
 if(MSVC)
 	set(CMAKE_CXX_STANDARD 14)
+
+	# Visual Studio 2017 15.8 introduced "Just my code" for C++. I'm not sure about exact compiler version it is available from
+	if (MSVC_VERSION GREATER_EQUAL "1915")
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /JMC")
+	endif()
 else()
 	set(CMAKE_CXX_STANDARD 11)
 endif()
