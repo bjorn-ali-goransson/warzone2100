@@ -1,8 +1,3 @@
-#pragma once
-
-// Nameless struct in glm::vec2<>
-#pragma warning(disable: 4201)
-
 #include "fpath.h"
 #include "movedef.h"
 #include "lib/framework/frame.h" // for statsdef.h
@@ -42,8 +37,6 @@
 
 // TODO: support marking sectors as dirty: portals needs to be rebuild, cost fields recalculated, and integration and flow fields for that sector must be removed from cache.
 
-namespace flowfield
-{
 // TODO: disable before merge with main branch
 #define I_AM_FLOW_FIELD_MAINTAINER_AND_WANT_TO_HAVE_MY_VIEW_OBSCURED 1
 
@@ -72,7 +65,7 @@ namespace flowfield
 
 	void enable();
 	bool isEnabled();
-
+~
 	void init();
 	void destroy();
 
@@ -90,4 +83,3 @@ namespace flowfield
 	std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
 
 	void debugDraw();
-}
