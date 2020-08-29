@@ -370,23 +370,23 @@ struct FLOWFIELDREQUEST
 
 static bool flowfieldEnabled = false;
 
-void enable() {
+void flowfieldEnable() {
 	flowfieldEnabled = true;
 }
 
-bool isEnabled() {
+bool isFlowfieldEnabled() {
 	return flowfieldEnabled;
 }
 
-void init() {
-	if (!isEnabled()) return;
+void flowfieldInit() {
+	if (!isFlowfieldEnabled()) return;
 
 	initCostFields();
 	setupPortals();
 }
 
-void destroy() {
-	if (!isEnabled()) return;
+void flowfieldDestroy() {
+	if (!isFlowfieldEnabled()) return;
 
 	destroyCostFields();
 	destroyPortals();
@@ -439,7 +439,7 @@ std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& pat
 }
 
 void debugDraw() {
-	if (!isEnabled()) return;
+	if (!isFlowfieldEnabled()) return;
 
 	if (COST_FIELD_DEBUG) {
 		debugDrawCostField();

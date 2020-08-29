@@ -675,7 +675,7 @@ bool ParseCommandLine(int argc, const char * const *argv)
 			break;
 
 		case CLI_FLOWFIELD:
-			flowfield::enable();
+			flowfieldEnable();
 			break;
 		};
 	}

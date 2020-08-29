@@ -450,20 +450,20 @@ FPATH_RETVAL fpathDroidRoute(DROID *psDroid, SDWORD tX, SDWORD tY, FPATH_MOVETYP
 		break;
 	}
 
-	if (flowfield::isEnabled()) {
-		std::deque<unsigned int> path = flowfield::getPathFromCache(startPos.x, startPos.y, tX, tY, psPropStats->propulsionType);
+	if (isFlowfieldEnabled()) {
+		std::deque<unsigned int> path = getFlowfieldPathFromCache(startPos.x, startPos.y, tX, tY, psPropStats->propulsionType);
 
 		if (!path.empty())
 		{
 			psDroid->sMove.pathIndex = 0;
 			psDroid->sMove.Status = MOVENAVIGATE;
 			psDroid->sMove.portalPath = path;
-			psDroid->sMove.asPath = flowfield::portalPathToCoordsPath(path, psDroid);
+			psDroid->sMove.asPath = flowfieldPortalPathToCoordsPath(path, psDroid);
 
 			objTrace(psDroid->id, "Got a portal path to (%d, %d)! Length=%d", psDroid->sMove.destination.x, psDroid->sMove.destination.y, static_cast<int>(psDroid->sMove.portalPath.size()));
 			return FPR_OK;
 		} else {
-			flowfield::calculateFlowFieldsAsync(&psDroid->sMove, psDroid->id, startPos.x, startPos.y, endPos.x, endPos.y, psPropStats->propulsionType,
+			calculateFlowFieldsAsync(&psDroid->sMove, psDroid->id, startPos.x, startPos.y, endPos.x, endPos.y, psPropStats->propulsionType,
 												psDroid->droidType, moveType, psDroid->player, acceptNearest, dstStructure);
 			return FPR_WAIT;
 		}

@@ -63,11 +63,11 @@
 	constexpr const bool DEBUG_THREAD_POOL = true;
 #endif
 
-	void enable();
-	bool isEnabled();
-~
-	void init();
-	void destroy();
+	void flowfieldEnable();
+	bool isFlowfieldEnabled();
+
+	void flowfieldInit();
+	void flowfieldDestroy();
 
 	/**
 	 * Public interface same as fpathRoute for compatibility.
@@ -76,10 +76,10 @@
 	void calculateFlowFieldsAsync(MOVE_CONTROL *psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
 								  DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const &dstStructure);
 
-	std::deque<unsigned int> getPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, PROPULSION_TYPE propulsion);
+	std::deque<unsigned int> getFlowfieldPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, PROPULSION_TYPE propulsion);
 
-	Vector2f getMovementVector(unsigned int nextPortalId, unsigned currentX, unsigned currentY, PROPULSION_TYPE propulsion);
+	Vector2f getFlowfieldMovementVector(unsigned int nextPortalId, unsigned currentX, unsigned currentY, PROPULSION_TYPE propulsion);
 
-	std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
+	std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
 
-	void debugDraw();
+	void flowfieldDebugDraw();

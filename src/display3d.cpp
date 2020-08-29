@@ -940,7 +940,7 @@ void draw3DScene()
 		showDroidPaths();
 	}
 
-	flowfield::debugDraw();
+	flowfieldDebugDraw();
 
 	wzPerfEnd(PERF_MISC);
 }

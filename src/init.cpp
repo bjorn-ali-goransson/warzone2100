@@ -768,7 +768,7 @@ void systemShutdown()
 	notificationsShutDown();
 	widgShutDown();
 	fpathShutdown();
-	flowfield::destroy();
+	flowfieldDestroy();
 	mapShutdown();
 	debug(LOG_MAIN, "shutting down everything else");
 	pal_ShutDown();		// currently unused stub
@@ -1116,7 +1116,7 @@ bool stageTwoInitialise()
 	{
 		return false;
 	}
-    flowfield::init();
+    flowfieldInit();
 
 	debug(LOG_MAIN, "stageTwoInitialise: done");
 
@@ -1132,7 +1132,7 @@ bool stageTwoShutDown()
 	debug(LOG_WZ, "== stageTwoShutDown ==");
 
 	fpathShutdown();
-    flowfield::destroy();
+    flowfieldDestroy();
 
 	cdAudio_Stop();
 
@@ -1224,7 +1224,7 @@ bool stageThreeInitialise()
 		return false;
 	}
 
-	flowfield::init();
+	flowfieldInit();
 
 	mapInit();
 	gridReset();
