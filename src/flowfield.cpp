@@ -398,26 +398,24 @@ void calculateFlowFieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 	Vector2i source { map_coord(startX), map_coord(startY) };
 	Vector2i goal { map_coord(tX), map_coord(tY) };
 
-	auto task = std::make_unique<PathRequestTask>(source, goal, propulsionType);
+	ASTARREQUEST job;
+	job.mapSource = source;
+	job.mapGoal = goal;
+	job.propulsion = propulsionType;
 
-ASTARREQUEST job;
-job.mapSource = source;
-job.mapGoal = goal;
-job.propulsion = propulsionType;
+	aStarJob task([job]() { return aStarJobExecute(job); });
+	aStarResults[id] = task.get_future();
 
-aStarJob task([job]() { return aStarJobExecute(job); });
-aStarResults[id] = task.get_future();
+	// Add to end of list
+	wzMutexLock(fpathMutex);
+	bool isFirstJob = aStarJobs.empty();
+	aStarJobs.push_back(std::move(task));
+	wzMutexUnlock(fpathMutex);
 
-// Add to end of list
-wzMutexLock(fpathMutex);
-bool isFirstJob = aStarJobs.empty();
-aStarJobs.push_back(std::move(task));
-wzMutexUnlock(fpathMutex);
-
-if (isFirstJob)
-{
-	wzSemaphorePost(fpathSemaphore);  // Wake up processing thread.
-}
+	if (isFirstJob)
+	{
+		wzSemaphorePost(fpathSemaphore);  // Wake up processing thread.
+	}
 }
 
 std::deque<unsigned int> getPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, const PROPULSION_TYPE propulsion) {
@@ -937,6 +935,9 @@ unsigned int PortalAStar::distanceCommon(const Portal& portal1, const Portal& po
 }
 
 void aStarJobExecute(ASTARREQUEST job) {
+
+	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
+
 	if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
 	{
 		std::lock_guard<std::mutex> lock(logMutex);
@@ -961,8 +962,6 @@ void aStarJobExecute(ASTARREQUEST job) {
 	for (auto&& future : flowFieldFutures) {
 		future.wait();
 	}
-
-	setPromise(true);
 }
 
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId) {
@@ -1013,7 +1012,7 @@ std::vector<std::future<bool>> scheduleFlowFields(ASTARREQUEST job, std::deque<u
 		Portal::pointsT goals = portalToGoals(leavePortal, localStartPoint);
 		localStartPoint = goals[0];
 
-		if (!localFlowFieldCache.contains(goals)) {
+		if (localFlowFieldCache.count(goals) > 0) {
 			auto task = std::make_unique<FlowfieldCalcTask>(goals, portals, sectors, job.propulsion);
 			flowFieldFutures.push_back(task->getFuture());
 			QThreadPool::globalInstance()->start(task.release());
@@ -1583,7 +1582,7 @@ void debugDrawCostField()
 			if (tileOnMap(actualX, actualY))
 			{
 				const unsigned int sectorId = Sector::getIdByCoords(p);
-				debugTileDrawCost(*groundSectors[sectorId], p, {x + xDelta, y + yDelta});
+				debugTileDrawCost(&groundSectors[sectorId], p, {x + xDelta, y + yDelta});
 			}
 		}
 	}
@@ -1737,15 +1736,4 @@ void debugDrawFlowField() {
 
 		lock.unlock();
 	}
-}
-
-// Function needed for sector-level flowfield QCache
-uint qHash(const flowfield::Portal::pointsT& key) {
-    uint hash = 0;
-
-    for (auto& point : key) {
-        hash ^= ::qHash(point.x) ^ ::qHash(point.y);
-    }
-
-    return hash;
 }
