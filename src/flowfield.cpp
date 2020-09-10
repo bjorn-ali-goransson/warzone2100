@@ -279,22 +279,6 @@ struct Node {
 	}
 };
 
-// Sector integrationField;
-// FlowFieldSector flowField;
-
-// // Constructor depends on member init order
-// const Portal::pointsT goals;
-// portalMapT& portals;
-// const sectorListT& sectors;
-// const unsigned int sectorId;
-// const AbstractSector& sector;
-// PROPULSION_TYPE propulsion;
-
-// void calculateIntegrationField(const Portal::pointsT& points);
-// void integratePoints(std::priority_queue<Node>& openSet);
-// void calculateFlowField();
-// unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost);
-
 void initCostFields();
 void costFieldReplaceWithEmpty(sectorListT& sectors);
 void setupPortals();
@@ -991,6 +975,33 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 	}
 }
 
+void FlowFieldSector::setVector(Vector2i p, VectorT vector) {
+	vectors[p.x][p.y] = vector;
+}
+
+FlowFieldSector::VectorT FlowFieldSector::getVector(Vector2i p) const {
+	return vectors[p.x][p.y];
+}
+
+
+
+
+// // Constructor depends on member init order
+// const Portal::pointsT goals;
+// portalMapT& portals;
+// const sectorListT& sectors;
+// const unsigned int sectorId;
+// const AbstractSector& sector;
+// PROPULSION_TYPE propulsion;
+
+// void calculateIntegrationField(const Portal::pointsT& points);
+// void integratePoints(std::priority_queue<Node>& openSet);
+// void calculateFlowField();
+// unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost);
+
+void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
+unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost);
+
 void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	auto& portals = portalArr[propulsionToIndex.at(job.propulsion)];
 	auto& sectors = costFields[propulsionToIndex.at(job.propulsion)];
@@ -1017,15 +1028,9 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	}
 }
 
-void FlowFieldSector::setVector(Vector2i p, VectorT vector) {
-	vectors[p.x][p.y] = vector;
-}
-
-FlowFieldSector::VectorT FlowFieldSector::getVector(Vector2i p) const {
-	return vectors[p.x][p.y];
-}
-
 void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
+	Sector integrationField;
+	FlowFieldSector flowField;
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
 	auto& sector = sectors[sectorId];
 
@@ -1041,8 +1046,6 @@ void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorLi
 		auto flowfieldMoved = std::make_unique<FlowFieldSector>(std::move(flowField));
 		flowfieldCache[propulsionToIndex.at(propulsion)]->insert(goals, flowfieldMoved.release());
 	}
-
-	setPromise(true);
 }
 
 void calculateIntegrationField(const Portal::pointsT& points) {
@@ -1096,7 +1099,7 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet) {
 	}
 }
 
-void FlowfieldCalcTask::calculateFlowField() {
+void calculateFlowField() {
 	for (int y = 0; y < SECTOR_SIZE; y++) {
 		for (int x = 0; x < SECTOR_SIZE; x++) {
 			Vector2i p = {x, y};
@@ -1133,7 +1136,7 @@ void FlowfieldCalcTask::calculateFlowField() {
 	}
 }
 
-unsigned short FlowfieldCalcTask::getCostOrElse(Vector2i coords, unsigned short elseCost) {
+unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost) {
 	if (coords.x < 0 || coords.y < 0 || coords.x >= SECTOR_SIZE || coords.y >= SECTOR_SIZE) {
 		// if near sector border, assume its safe to go to nearby sector
 		return std::max<short>(static_cast<short>(elseCost), static_cast<short>(elseCost) - static_cast<short>(1));
