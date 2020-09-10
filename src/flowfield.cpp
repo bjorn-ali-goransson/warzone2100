@@ -948,7 +948,7 @@ void aStarJobExecute(ASTARREQUEST job) {
 	unsigned int sourcePortalId, goalPortalId;
 	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(job.mapSource, job.mapGoal, job.propulsion);
 
-	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId);
+	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId, job.propulsion);
 
 	if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
 	{
@@ -964,10 +964,10 @@ void aStarJobExecute(ASTARREQUEST job) {
 	}
 }
 
-std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId) {
+std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
 	std::unique_lock<std::mutex> lock(portalPathMutex);
 	auto& localPortalPathCache = *portalPathCache[propulsionToIndex.at(propulsion)];
-	std::deque<unsigned int>* pathPtr = localPortalPathCache[{sourcePortalId, goalPortalId}];
+	std::deque<unsigned int>* pathPtr = &localPortalPathCache[{sourcePortalId, goalPortalId}];
 	if (pathPtr) {
 		if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
 		{
@@ -1004,9 +1004,6 @@ std::vector<std::future<bool>> scheduleFlowFields(ASTARREQUEST job, std::deque<u
 
 	Vector2i localStartPoint = job.mapSource;
 
-	// Lock the whole loop, but hopefully this will help with lock contention that would otherwise occur
-	std::lock_guard<std::mutex> lock(flowfieldMutex);
-	
 	for (unsigned int leavePortalId : path) {
 		Portal& leavePortal = portals[leavePortalId];
 		Portal::pointsT goals = portalToGoals(leavePortal, localStartPoint);
@@ -1014,8 +1011,6 @@ std::vector<std::future<bool>> scheduleFlowFields(ASTARREQUEST job, std::deque<u
 
 		if (localFlowFieldCache.count(goals) > 0) {
 			auto task = std::make_unique<FlowfieldCalcTask>(goals, portals, sectors, job.propulsion);
-			flowFieldFutures.push_back(task->getFuture());
-			QThreadPool::globalInstance()->start(task.release());
 		}
 	}
 
