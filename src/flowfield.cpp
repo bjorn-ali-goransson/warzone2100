@@ -956,12 +956,7 @@ void aStarJobExecute(ASTARREQUEST job) {
 		_debugPortalPath = path;
 	}
 
-	auto flowFieldFutures = scheduleFlowFields(job, path);
-
-	// Wait for all flow field task to complete
-	for (auto&& future : flowFieldFutures) {
-		future.wait();
-	}
+	auto flowFieldFutures = processFlowFields(job, path);
 }
 
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
@@ -996,11 +991,10 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 	}
 }
 
-std::vector<std::future<bool>> scheduleFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
+void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	auto& portals = portalArr[propulsionToIndex.at(job.propulsion)];
 	auto& sectors = costFields[propulsionToIndex.at(job.propulsion)];
 	auto& localFlowFieldCache = *flowfieldCache[propulsionToIndex.at(job.propulsion)];
-	std::vector<std::future<bool>> flowFieldFutures;
 
 	Vector2i localStartPoint = job.mapSource;
 
@@ -1010,7 +1004,7 @@ std::vector<std::future<bool>> scheduleFlowFields(ASTARREQUEST job, std::deque<u
 		localStartPoint = goals[0];
 
 		if (localFlowFieldCache.count(goals) > 0) {
-			auto task = std::make_unique<FlowfieldCalcTask>(goals, portals, sectors, job.propulsion);
+			processFlowField(goals, portals, sectors, job.propulsion);
 		}
 	}
 
@@ -1019,17 +1013,8 @@ std::vector<std::future<bool>> scheduleFlowFields(ASTARREQUEST job, std::deque<u
 	Portal::pointsT finalGoals { job.mapGoal };
 
 	if (!localFlowFieldCache.count(finalGoals) > 0) {
-		auto task = std::make_unique<FlowfieldCalcTask>(finalGoals, portals, sectors, job.propulsion);
-		flowFieldFutures.push_back(task->getFuture());
-		QThreadPool::globalInstance()->start(task.release());
+		processFlowField(finalGoals, portals, sectors, job.propulsion);
 	}
-
-	if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
-	{
-		std::lock_guard<std::mutex> lock(logMutex);
-	}
-
-	return flowFieldFutures;
 }
 
 void FlowFieldSector::setVector(Vector2i p, VectorT vector) {
@@ -1040,12 +1025,10 @@ FlowFieldSector::VectorT FlowFieldSector::getVector(Vector2i p) const {
 	return vectors[p.x][p.y];
 }
 
-FlowfieldCalcTask::FlowfieldCalcTask(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion)
-	: goals(goals), portals(portals), sectors(sectors), sectorId(AbstractSector::getIdByCoords(*goals.begin())),
-	sector(*sectors[sectorId]), propulsion(propulsion), flowField() {
-}
+void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
+	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
+	auto& sector = sectors[sectorId];
 
-void FlowfieldCalcTask::runPromised() {
 	// NOTE: Vector field for given might have been calculated by the time this task have chance to run.
 	// I don't care, since this task has proven to be short, and I want to avoid lock contention when checking cache
 
@@ -1062,7 +1045,7 @@ void FlowfieldCalcTask::runPromised() {
 	setPromise(true);
 }
 
-void FlowfieldCalcTask::calculateIntegrationField(const Portal::pointsT& points) {
+void calculateIntegrationField(const Portal::pointsT& points) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
 	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < SECTOR_SIZE; x++) {
@@ -1085,7 +1068,7 @@ void FlowfieldCalcTask::calculateIntegrationField(const Portal::pointsT& points)
 	}
 }
 
-void FlowfieldCalcTask::integratePoints(std::priority_queue<Node>& openSet) {
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet) {
 	const Node& node = openSet.top();
 	Vector2i nodePoint = getPointByFlatIndex(node.index);
 	Tile nodeTile = sector.getTile(nodePoint);
