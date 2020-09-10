@@ -991,7 +991,7 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 
 		lock.lock();
 		auto pathCopy = std::make_unique<std::deque<unsigned int>>(path);
-		localPortalPathCache.insert({ sourcePortalId, goalPortalId }, pathCopy.release());
+		localPortalPathCache.insert({ sourcePortalId, goalPortalId }, *pathCopy.release());
 		return path;
 	}
 }
@@ -1018,7 +1018,7 @@ std::vector<std::future<bool>> scheduleFlowFields(ASTARREQUEST job, std::deque<u
 	// TODO: in future with better integration with Warzone, there might be multiple goals for a formation, so droids don't bump into each other
 	Portal::pointsT finalGoals { job.mapGoal };
 
-	if (!localFlowFieldCache.contains(finalGoals)) {
+	if (!localFlowFieldCache.count(finalGoals) > 0) {
 		auto task = std::make_unique<FlowfieldCalcTask>(finalGoals, portals, sectors, job.propulsion);
 		flowFieldFutures.push_back(task->getFuture());
 		QThreadPool::globalInstance()->start(task.release());
