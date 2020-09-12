@@ -983,22 +983,6 @@ FlowFieldSector::VectorT FlowFieldSector::getVector(Vector2i p) const {
 	return vectors[p.x][p.y];
 }
 
-
-
-
-// // Constructor depends on member init order
-// const Portal::pointsT goals;
-// portalMapT& portals;
-// const sectorListT& sectors;
-// const unsigned int sectorId;
-// const AbstractSector& sector;
-// PROPULSION_TYPE propulsion;
-
-// void calculateIntegrationField(const Portal::pointsT& points);
-// void integratePoints(std::priority_queue<Node>& openSet);
-// void calculateFlowField();
-// unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost);
-
 void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
 unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost);
 
@@ -1029,7 +1013,6 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 }
 
 void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
-	Sector integrationField;
 	FlowFieldSector flowField;
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
 	auto& sector = sectors[sectorId];
@@ -1037,18 +1020,18 @@ void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorLi
 	// NOTE: Vector field for given might have been calculated by the time this task have chance to run.
 	// I don't care, since this task has proven to be short, and I want to avoid lock contention when checking cache
 
-	calculateIntegrationField(goals);
+	Sector integrationField;
+	calculateIntegrationField(goals, sectors, sector.get(), integrationField);
 
 	calculateFlowField();
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
-		auto flowfieldMoved = std::make_unique<FlowFieldSector>(std::move(flowField));
-		flowfieldCache[propulsionToIndex.at(propulsion)]->insert(goals, flowfieldMoved.release());
+		flowfieldCache[propulsionToIndex.at(propulsion)]->insert(std::make_pair(goals, flowField));
 	}
 }
 
-void calculateIntegrationField(const Portal::pointsT& points) {
+Sector calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector integrationField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
 	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < SECTOR_SIZE; x++) {
@@ -1066,12 +1049,12 @@ void calculateIntegrationField(const Portal::pointsT& points) {
 	}
 
 	while (!openSet.empty()) {
-		integratePoints(openSet);
+		integrateFlowfieldPoints(openSet, sectors, integrationField);
 		openSet.pop();
 	}
 }
 
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet) {
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, Sector integrationField) {
 	const Node& node = openSet.top();
 	Vector2i nodePoint = getPointByFlatIndex(node.index);
 	Tile nodeTile = sector.getTile(nodePoint);
