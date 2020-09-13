@@ -332,7 +332,7 @@ constexpr const unsigned int DEBUG_DRAW_X_DELTA = 7;
 constexpr const unsigned int DEBUG_DRAW_Y_DELTA = 6;
 
 void debugDrawCostField();
-void debugTileDrawCost(AbstractSector& sector, Vector2i p, Vector2i screenXY);
+void debugTileDrawCost(AbstractSector* sector, Vector2i p, Vector2i screenXY);
 void debugDrawPortals();
 void debugDrawPortalPath();
 
@@ -976,7 +976,7 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 
 		lock.lock();
 		auto pathCopy = std::unique_ptr<std::deque<unsigned int>>(new std::deque<unsigned int>(path));
-		localPortalPathCache.insert({ sourcePortalId, goalPortalId }, *pathCopy.release());
+		localPortalPathCache.insert(std::make_pair(std::pair<unsigned int, unsigned int>(sourcePortalId, goalPortalId), *pathCopy.release()));
 		return path;
 	}
 }
@@ -1018,7 +1018,7 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	}
 }
 
-Sector calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
+void calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
 void calculateFlowField(FlowFieldSector* flowField, Sector* integrationField);
 
@@ -1042,7 +1042,7 @@ void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorLi
 	}
 }
 
-Sector calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
+void calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
 	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < SECTOR_SIZE; x++) {
