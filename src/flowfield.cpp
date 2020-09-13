@@ -117,8 +117,6 @@ private:
 };
 
 struct Portal {
-	typedef std::vector<Vector2i> pointsT;
-
 	// Sector layout
 	// Right and bottom borders are "first sector points" in each sector
 	// 1 - first sector points
@@ -131,8 +129,8 @@ struct Portal {
 	
 	AbstractSector* firstSector = nullptr;
 	AbstractSector* secondSector = nullptr;
-	pointsT firstSectorPoints;
-	pointsT secondSectorPoints;
+	std::vector<Vector2i> firstSectorPoints;
+	std::vector<Vector2i> secondSectorPoints;
 	std::vector<unsigned int> neighbors;
 
 	Portal() = default;
@@ -141,7 +139,7 @@ struct Portal {
 	Portal(Portal&&) = default;
 	Portal& operator=(Portal&&) = default;
 
-	Portal(AbstractSector* sector1, AbstractSector* sector2, pointsT& firstSectorPoints, pointsT& secondSectorPoints);
+	Portal(AbstractSector* sector1, AbstractSector* sector2, std::vector<Vector2i>& firstSectorPoints, std::vector<Vector2i>& secondSectorPoints);
 
 	bool isValid() const;
 	Vector2i getFirstSectorCenter() const;
@@ -320,7 +318,7 @@ std::pair<unsigned int, unsigned int> mapSourceGoalToPortals(Vector2i mapSource,
 bool isForward(Vector2i source, Vector2i firstSectorGoal, Vector2i secondSectorGoal);
 
 std::deque<unsigned int> getPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
-Portal::pointsT portalToGoals(const Portal& portal, Vector2i currentPosition);
+std::vector<Vector2i> portalToGoals(const Portal& portal, Vector2i currentPosition);
 Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, PROPULSION_TYPE propulsion);
 
 std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion);
@@ -347,7 +345,7 @@ struct ASTARREQUEST
 
 struct FLOWFIELDREQUEST
 {
-	Portal::pointsT goals;
+	std::vector<Vector2i> goals;
 	std::map<unsigned int, Portal>& portals;
 	const sectorListT& sectors;
 	PROPULSION_TYPE propulsion;
@@ -574,7 +572,7 @@ std::mutex flowfieldMutex;
 
 // Caches
 typedef std::map<std::pair<unsigned int, unsigned int>, std::deque<unsigned int>> portalPathCacheT;
-typedef std::map<Portal::pointsT, FlowFieldSector> flowfieldCacheT;
+typedef std::map<std::vector<Vector2i>, std::unique_ptr<FlowFieldSector>> flowfieldCacheT;
 
 // Workaround because QCache is neither copyable nor movable
 std::array<std::unique_ptr<portalPathCacheT>, 4> portalPathCache {
@@ -605,7 +603,7 @@ bool Tile::isBlocking() const
 	return cost == NOT_PASSABLE;
 }
 
-Portal::Portal(AbstractSector* sector1, AbstractSector* sector2, pointsT& firstSectorPoints, pointsT& secondSectorPoints)
+Portal::Portal(AbstractSector* sector1, AbstractSector* sector2, std::vector<Vector2i>& firstSectorPoints, std::vector<Vector2i>& secondSectorPoints)
 	: firstSector(sector1),	secondSector(sector2), firstSectorPoints(firstSectorPoints), secondSectorPoints(secondSectorPoints)
 {
 	assert(firstSectorPoints.size() <= SECTOR_SIZE);
@@ -989,7 +987,7 @@ VectorT FlowFieldSector::getVector(Vector2i p) const {
 	return vectors[p.x][p.y];
 }
 
-void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
+void processFlowField(std::vector<Vector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
 unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
 
 void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
@@ -1001,7 +999,7 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 
 	for (unsigned int leavePortalId : path) {
 		Portal& leavePortal = portals[leavePortalId];
-		Portal::pointsT goals = portalToGoals(leavePortal, localStartPoint);
+		std::vector<Vector2i> goals = portalToGoals(leavePortal, localStartPoint);
 		localStartPoint = goals[0];
 
 		if (localFlowFieldCache.count(goals) > 0) {
@@ -1011,18 +1009,18 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 
 	// Final goal task
 	// TODO: in future with better integration with Warzone, there might be multiple goals for a formation, so droids don't bump into each other
-	Portal::pointsT finalGoals { job.mapGoal };
+	std::vector<Vector2i> finalGoals { job.mapGoal };
 
 	if (localFlowFieldCache.count(finalGoals) > 0) {
 		processFlowField(finalGoals, portals, sectors, job.propulsion);
 	}
 }
 
-void calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
+void calculateIntegrationField(const std::vector<Vector2i>& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
 void calculateFlowField(FlowFieldSector* flowField, Sector* integrationField);
 
-void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
+void processFlowField(std::vector<Vector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
 	FlowFieldSector* flowField = new FlowFieldSector();
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
 	auto& sector = sectors[sectorId];
@@ -1038,11 +1036,11 @@ void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorLi
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
 		auto cache = flowfieldCache[propulsionToIndex.at(propulsion)].get();
-		cache->insert(std::make_pair(goals, *flowField));
+		cache->insert(std::make_pair(goals, std::unique_ptr<FlowFieldSector>(flowField)));
 	}
 }
 
-void calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
+void calculateIntegrationField(const std::vector<Vector2i>& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
 	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < SECTOR_SIZE; x++) {
@@ -1336,8 +1334,8 @@ Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned
 							bool isXAxis, AbstractSector& thisSector, AbstractSector& otherSector, unsigned int& axisEndOut)
 {
 	axisEndOut = 0;
-	Portal::pointsT firstSectorPoints;
-	Portal::pointsT secondSectorPoints;
+	std::vector<Vector2i> firstSectorPoints;
+	std::vector<Vector2i> secondSectorPoints;
 	Vector2i firstSectorPoint;
 	Vector2i secondSectorPoint;
 
@@ -1499,7 +1497,7 @@ std::deque<unsigned int> getPathFromCache(unsigned int sourcePortalId, unsigned 
 	return localPortalPathCache.find({sourcePortalId, goalPortalId})->second;
 }
 
-Portal::pointsT portalToGoals(const Portal& portal, Vector2i currentPosition) {
+std::vector<Vector2i> portalToGoals(const Portal& portal, Vector2i currentPosition) {
 	const bool forward = isForward(currentPosition, portal.getFirstSectorCenter(), portal.getSecondSectorCenter());
 
 	if (forward) {
@@ -1512,7 +1510,7 @@ Portal::pointsT portalToGoals(const Portal& portal, Vector2i currentPosition) {
 Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, PROPULSION_TYPE propulsion) {
 	auto&& portals = portalArr[propulsionToIndex.at(propulsion)];
 	const Portal& nextPortal = portals.at(nextPortalId);
-	Portal::pointsT goals = portalToGoals(nextPortal, currentPosition);
+	std::vector<Vector2i> goals = portalToGoals(nextPortal, currentPosition);
 
 	std::lock_guard<std::mutex> lock(flowfieldMutex);
 	flowfieldCacheT& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(propulsion)];
@@ -1522,7 +1520,7 @@ Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, 
 		return { 0.0f, 0.0f };
 	}
 
-	VectorT vector = localFlowfieldCache.find(goals)->second.getVector(currentPosition);
+	VectorT vector = localFlowfieldCache.find(goals)->second->getVector(currentPosition);
 
 	return { vector.x, vector.y };
 }
@@ -1697,7 +1695,7 @@ void debugDrawFlowField() {
 				auto& sector = cacheEntry.second;
 				for (int y = 0; y < SECTOR_SIZE; y++) {
 					for (int x = 0; x < SECTOR_SIZE; x++) {
-						auto vector = sector.getVector({x, y});
+						auto vector = sector->getVector({x, y});
 						const int absoluteX = tlCorner.x + x;
 						const int absoluteY = tlCorner.y + y;
 
