@@ -9,6 +9,7 @@
 #include <set>
 #include <typeinfo>
 #include <vector>
+#include <memory>
 
 #include "lib/framework/debug.h"
 #include "lib/ivis_opengl/pieblitfunc.h"
@@ -377,31 +378,6 @@ void flowfieldDestroy() {
 	destroyFlowfieldCache();
 }
 
-void calculateFlowFieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
-								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
-	Vector2i source { map_coord(startX), map_coord(startY) };
-	Vector2i goal { map_coord(tX), map_coord(tY) };
-
-	ASTARREQUEST job;
-	job.mapSource = source;
-	job.mapGoal = goal;
-	job.propulsion = propulsionType;
-
-	aStarJob task([job]() { return aStarJobExecute(job); });
-	aStarResults[id] = task.get_future();
-
-	// Add to end of list
-	wzMutexLock(fpathMutex);
-	bool isFirstJob = aStarJobs.empty();
-	aStarJobs.push_back(std::move(task));
-	wzMutexUnlock(fpathMutex);
-
-	if (isFirstJob)
-	{
-		wzSemaphorePost(fpathSemaphore);  // Wake up processing thread.
-	}
-}
-
 std::deque<unsigned int> getPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, const PROPULSION_TYPE propulsion) {
 	Vector2i source { map_coord(startX), map_coord(startY) };
 	Vector2i goal { map_coord(tX), map_coord(tY) };
@@ -453,6 +429,33 @@ static std::unordered_map<uint32_t, wz::future<ASTARREQUEST>> aStarResults;
 using flowFieldJob = wz::packaged_task<FLOWFIELDREQUEST()>;
 static std::list<flowFieldJob>    flowFieldJobs;
 static std::unordered_map<uint32_t, wz::future<FLOWFIELDREQUEST>> flowFieldResults;
+
+void aStarJobExecute(ASTARREQUEST job);
+
+void calculateFlowFieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
+								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
+	Vector2i source { map_coord(startX), map_coord(startY) };
+	Vector2i goal { map_coord(tX), map_coord(tY) };
+
+	ASTARREQUEST job;
+	job.mapSource = source;
+	job.mapGoal = goal;
+	job.propulsion = propulsionType;
+
+	aStarJob task([job]() { return aStarJobExecute(job); });
+	aStarResults[id] = task.get_future();
+
+	// Add to end of list
+	wzMutexLock(fpathMutex);
+	bool isFirstJob = aStarJobs.empty();
+	aStarJobs.push_back(std::move(task));
+	wzMutexUnlock(fpathMutex);
+
+	if (isFirstJob)
+	{
+		wzSemaphorePost(fpathSemaphore);  // Wake up processing thread.
+	}
+}
 
 /** This runs in a separate thread */
 static int fpathThreadFunc(void *)
@@ -575,17 +578,17 @@ typedef std::map<Portal::pointsT, FlowFieldSector> flowfieldCacheT;
 
 // Workaround because QCache is neither copyable nor movable
 std::array<std::unique_ptr<portalPathCacheT>, 4> portalPathCache {
-	std::make_unique<portalPathCacheT>(PORTAL_PATH_CACHE_MAX),
-	std::make_unique<portalPathCacheT>(PORTAL_PATH_CACHE_MAX),
-	std::make_unique<portalPathCacheT>(PORTAL_PATH_CACHE_MAX),
-	std::make_unique<portalPathCacheT>(PORTAL_PATH_CACHE_MAX)
+	std::unique_ptr<portalPathCacheT>(new portalPathCacheT()),
+	std::unique_ptr<portalPathCacheT>(new portalPathCacheT()),
+	std::unique_ptr<portalPathCacheT>(new portalPathCacheT()),
+	std::unique_ptr<portalPathCacheT>(new portalPathCacheT())
 };
 
 std::array<std::unique_ptr<flowfieldCacheT>, 4> flowfieldCache {
-	std::make_unique<flowfieldCacheT>(FLOWFIELD_CACHE_MAX),
-	std::make_unique<flowfieldCacheT>(FLOWFIELD_CACHE_MAX),
-	std::make_unique<flowfieldCacheT>(FLOWFIELD_CACHE_MAX),
-	std::make_unique<flowfieldCacheT>(FLOWFIELD_CACHE_MAX)
+	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT()),
+	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT()),
+	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT()),
+	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT())
 };
 
 constexpr const Tile emptyTile;
@@ -918,6 +921,9 @@ unsigned int PortalAStar::distanceCommon(const Portal& portal1, const Portal& po
 	return straightLineDistance(portal1.getFirstSectorCenter(), portal2.getFirstSectorCenter());
 }
 
+std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
+void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path);
+
 void aStarJobExecute(ASTARREQUEST job) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
@@ -969,7 +975,7 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 		std::deque<unsigned int> path = portalWalker.findPath(sourcePortalId, static_cast<unsigned int>(portals.size()));
 
 		lock.lock();
-		auto pathCopy = std::make_unique<std::deque<unsigned int>>(path);
+		auto pathCopy = std::unique_ptr<std::deque<unsigned int>>(new std::deque<unsigned int>(path));
 		localPortalPathCache.insert({ sourcePortalId, goalPortalId }, *pathCopy.release());
 		return path;
 	}
@@ -1007,10 +1013,14 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	// TODO: in future with better integration with Warzone, there might be multiple goals for a formation, so droids don't bump into each other
 	Portal::pointsT finalGoals { job.mapGoal };
 
-	if (!localFlowFieldCache.count(finalGoals) > 0) {
+	if (localFlowFieldCache.count(finalGoals) > 0) {
 		processFlowField(finalGoals, portals, sectors, job.propulsion);
 	}
 }
+
+Sector calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
+void calculateFlowField(FlowFieldSector* flowField, Sector* integrationField);
 
 void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
 	FlowFieldSector* flowField = new FlowFieldSector();
@@ -1037,7 +1047,9 @@ Sector calculateIntegrationField(const Portal::pointsT& points, const sectorList
 	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < SECTOR_SIZE; x++) {
 		for (unsigned int y = 0; y < SECTOR_SIZE; y++) {
-			integrationField->setTile({x, y}, Tile { NOT_PASSABLE });
+			Tile tile;
+			tile.cost = NOT_PASSABLE;
+			integrationField->setTile({x, y}, tile);
 		}
 	}
 
@@ -1075,7 +1087,9 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorLi
 	const unsigned short nodeOldCost = integrationField->getTile(nodePoint).cost;
 
 	if (newCost < nodeOldCost) {
-		integrationField->setTile(nodePoint, Tile { newCost });
+		Tile tile;
+		tile.cost = newCost;
+		integrationField->setTile(nodePoint, tile);
 
 		for (unsigned int neighbor : AbstractSector::getNeighbors(sectors, nodePoint)) {
 			openSet.push({ newCost, neighbor });
@@ -1148,7 +1162,7 @@ void initCostFields()
 		sectors.reserve(numSectors);
 		for (int i = 0; i < numSectors; i++)
 		{
-			sectors.push_back(std::make_unique<Sector>());
+			sectors.push_back(std::unique_ptr<Sector>(new Sector()));
 		}
 	}
 
@@ -1182,7 +1196,7 @@ void costFieldReplaceWithEmpty(sectorListT& sectors)
 	{
 		if (sector->checkIsEmpty())
 		{
-			sector = std::make_unique<EmptySector>();
+			sector = std::unique_ptr<EmptySector>(new EmptySector());
 			_debugEmptySectors++;
 		}
 	}
@@ -1313,7 +1327,9 @@ Tile createTile(Vector2i p, PROPULSION_TYPE propulsion)
 		}
 	}
 
-	return Tile{cost};
+	Tile tile;
+	tile.cost = cost;
+	return tile;
 }
 
 Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned otherAxis1, unsigned otherAxis2,
