@@ -237,21 +237,21 @@ private:
 	unsigned int distanceCommon(const Portal& portal1, const Portal& portal2) const;
 };
 
+struct VectorT {
+	float x;
+	float y;
+
+	void normalize() {
+		const float length = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
+
+		if (length != 0) {
+			x /= length;
+			y /= length;
+		}
+	}
+};
 
 class FlowFieldSector final {
-	struct VectorT {
-		float x;
-		float y;
-
-		void normalize() {
-			const float length = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
-
-			if (length != 0) {
-				x /= length;
-				y /= length;
-			}
-		}
-	};
 public:
 	typedef std::array<std::array<VectorT, SECTOR_SIZE>, SECTOR_SIZE> vectorArrayT;
 
@@ -940,7 +940,7 @@ void aStarJobExecute(ASTARREQUEST job) {
 		_debugPortalPath = path;
 	}
 
-	auto flowFieldFutures = processFlowFields(job, path);
+	processFlowFields(job, path);
 }
 
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
@@ -979,12 +979,12 @@ void FlowFieldSector::setVector(Vector2i p, VectorT vector) {
 	vectors[p.x][p.y] = vector;
 }
 
-FlowFieldSector::VectorT FlowFieldSector::getVector(Vector2i p) const {
+VectorT FlowFieldSector::getVector(Vector2i p) const {
 	return vectors[p.x][p.y];
 }
 
 void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
-unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost);
+unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
 
 void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	auto& portals = portalArr[propulsionToIndex.at(job.propulsion)];
@@ -1013,30 +1013,31 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 }
 
 void processFlowField(Portal::pointsT goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
-	FlowFieldSector flowField;
+	FlowFieldSector* flowField = new FlowFieldSector();
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
 	auto& sector = sectors[sectorId];
 
 	// NOTE: Vector field for given might have been calculated by the time this task have chance to run.
 	// I don't care, since this task has proven to be short, and I want to avoid lock contention when checking cache
 
-	Sector integrationField;
+	Sector* integrationField = new Sector();
 	calculateIntegrationField(goals, sectors, sector.get(), integrationField);
 
-	calculateFlowField();
+	calculateFlowField(flowField, integrationField);
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
-		flowfieldCache[propulsionToIndex.at(propulsion)]->insert(std::make_pair(goals, flowField));
+		auto cache = flowfieldCache[propulsionToIndex.at(propulsion)].get();
+		cache->insert(std::make_pair(goals, *flowField));
 	}
 }
 
-Sector calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector integrationField) {
+Sector calculateIntegrationField(const Portal::pointsT& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
 	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < SECTOR_SIZE; x++) {
 		for (unsigned int y = 0; y < SECTOR_SIZE; y++) {
-			integrationField.setTile({x, y}, Tile { NOT_PASSABLE });
+			integrationField->setTile({x, y}, Tile { NOT_PASSABLE });
 		}
 	}
 
@@ -1049,15 +1050,15 @@ Sector calculateIntegrationField(const Portal::pointsT& points, const sectorList
 	}
 
 	while (!openSet.empty()) {
-		integrateFlowfieldPoints(openSet, sectors, integrationField);
+		integrateFlowfieldPoints(openSet, sectors, sector, integrationField);
 		openSet.pop();
 	}
 }
 
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, Sector integrationField) {
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
 	const Node& node = openSet.top();
 	Vector2i nodePoint = getPointByFlatIndex(node.index);
-	Tile nodeTile = sector.getTile(nodePoint);
+	Tile nodeTile = sector->getTile(nodePoint);
 
 	if (nodeTile.isBlocking()) {
 		return;
@@ -1071,10 +1072,10 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorLi
 	}
 
 	const unsigned short newCost = node.predecessorCost + nodeCostFromCostField;
-	const unsigned short nodeOldCost = integrationField.getTile(nodePoint).cost;
+	const unsigned short nodeOldCost = integrationField->getTile(nodePoint).cost;
 
 	if (newCost < nodeOldCost) {
-		integrationField.setTile(nodePoint, Tile { newCost });
+		integrationField->setTile(nodePoint, Tile { newCost });
 
 		for (unsigned int neighbor : AbstractSector::getNeighbors(sectors, nodePoint)) {
 			openSet.push({ newCost, neighbor });
@@ -1082,28 +1083,28 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorLi
 	}
 }
 
-void calculateFlowField() {
+void calculateFlowField(FlowFieldSector* flowField, Sector* integrationField) {
 	for (int y = 0; y < SECTOR_SIZE; y++) {
 		for (int x = 0; x < SECTOR_SIZE; x++) {
 			Vector2i p = {x, y};
-			Tile tile = integrationField.getTile(p);
+			Tile tile = integrationField->getTile(p);
 			if (tile.isBlocking() || tile.cost == COST_MIN) {
 				// Skip goal and non-passable
 				// TODO: probably 0.0 should be only for actual goals, not intermediate goals when crossing sectors
-				flowField.setVector(p, FlowFieldSector::VectorT { 0.0f, 0.0f });
+				flowField->setVector(p, VectorT { 0.0f, 0.0f });
 				continue;
 			}
 
 			// Use current tile cost when no cost available.
 			// This will either keep the vector horizontal or vertical, or turn away from higher-cost neighbor
 			// NOTICE: Flow field on sector borders might be not optimal
-			const unsigned short leftCost = getCostOrElse({x - 1, y}, tile.cost);
-			const unsigned short rightCost = getCostOrElse({x + 1, y}, tile.cost);
+			const unsigned short leftCost = getCostOrElse(integrationField, {x - 1, y}, tile.cost);
+			const unsigned short rightCost = getCostOrElse(integrationField, {x + 1, y}, tile.cost);
 
-			const unsigned short topCost = getCostOrElse({x, y - 1}, tile.cost);
-			const unsigned short bottomCost = getCostOrElse({x, y + 1}, tile.cost);
+			const unsigned short topCost = getCostOrElse(integrationField, {x, y - 1}, tile.cost);
+			const unsigned short bottomCost = getCostOrElse(integrationField, {x, y + 1}, tile.cost);
 
-			FlowFieldSector::VectorT vector;
+			VectorT vector;
 			vector.x = leftCost - rightCost;
 			vector.y = topCost - bottomCost;
 			vector.normalize();
@@ -1114,18 +1115,18 @@ void calculateFlowField() {
 				vector.y = 0.1f;
 			}
 
-			flowField.setVector(p, vector);
+			flowField->setVector(p, vector);
 		}
 	}
 }
 
-unsigned short getCostOrElse(Vector2i coords, unsigned short elseCost) {
+unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost) {
 	if (coords.x < 0 || coords.y < 0 || coords.x >= SECTOR_SIZE || coords.y >= SECTOR_SIZE) {
 		// if near sector border, assume its safe to go to nearby sector
 		return std::max<short>(static_cast<short>(elseCost), static_cast<short>(elseCost) - static_cast<short>(1));
 	}
 
-	const Tile& tile = integrationField.getTile(coords);
+	const Tile& tile = integrationField->getTile(coords);
 	if (tile.isBlocking()) {
 		return elseCost * OBSTACLE_AVOIDANCE_COEFF;
 	}
@@ -1474,12 +1475,12 @@ bool isForward(Vector2i source, Vector2i firstSectorGoal, Vector2i secondSectorG
 std::deque<unsigned int> getPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
 	std::lock_guard<std::mutex> lock(portalPathMutex);
 	auto& localPortalPathCache = *portalPathCache[propulsionToIndex.at(propulsion)];
-	std::deque<unsigned int>* pathPtr = localPortalPathCache[{sourcePortalId, goalPortalId}];
-	if (pathPtr) {
-		return *pathPtr;
+
+	if(localPortalPathCache.count({sourcePortalId, goalPortalId}) == 0){
+		return std::deque<unsigned int> {};
 	}
 
-	return std::deque<unsigned int> {};
+	return localPortalPathCache.find({sourcePortalId, goalPortalId})->second;
 }
 
 Portal::pointsT portalToGoals(const Portal& portal, Vector2i currentPosition) {
@@ -1499,15 +1500,15 @@ Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, 
 
 	std::lock_guard<std::mutex> lock(flowfieldMutex);
 	flowfieldCacheT& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(propulsion)];
-	FlowFieldSector* sector = localFlowfieldCache[goals];
 
-	if (sector) {
-		FlowFieldSector::VectorT vector = sector->getVector(currentPosition);
-		return { vector.x, vector.y };
-	} else {
+	if(localFlowfieldCache.count(goals) == 0){
 		// (0,0) vector considered invalid
 		return { 0.0f, 0.0f };
 	}
+
+	VectorT vector = localFlowfieldCache.find(goals)->second.getVector(currentPosition);
+
+	return { vector.x, vector.y };
 }
 
 std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion) {
@@ -1546,15 +1547,15 @@ void debugDrawCostField()
 			if (tileOnMap(actualX, actualY))
 			{
 				const unsigned int sectorId = Sector::getIdByCoords(p);
-				debugTileDrawCost(&groundSectors[sectorId], p, {x + xDelta, y + yDelta});
+				debugTileDrawCost(groundSectors[sectorId].get(), p, {x + xDelta, y + yDelta});
 			}
 		}
 	}
 }
 
-void debugTileDrawCost(AbstractSector& sector, Vector2i p, Vector2i screenXY)
+void debugTileDrawCost(AbstractSector* sector, Vector2i p, Vector2i screenXY)
 {
-	WzText costText(std::to_string(sector.getTile(p).cost), font_small);
+	WzText costText(std::to_string(sector->getTile(p).cost), font_small);
 	// HACK
 	// I have completely NO IDEA how to draw stuff correctly. This code is by trial-and-error.
 	// It's debug only, but it could be a bit better. Too many magic numers, and works only on initial zoom and rotation.
@@ -1658,10 +1659,10 @@ void debugDrawFlowField() {
 	// It is only debug. If lock happens not to be available, skip drawing
 	std::unique_lock<std::mutex> lock(flowfieldMutex, std::try_to_lock);
 	if (lock) {
-		auto& cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
-		auto keys = cache->keys();
+		auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
 
-		for (auto&& key : keys) {
+		for (auto const& cacheEntry: *cache) {
+			auto key = cacheEntry.first;
 			int goalX = key[0].x;
 			int goalY = key[0].y;
 			bool onScreen = (std::abs(playerXTile - goalX) < SECTOR_SIZE * 2) && (std::abs(playerZTile - goalY) < SECTOR_SIZE * 2);
@@ -1677,7 +1678,7 @@ void debugDrawFlowField() {
 				}
 
 				// Draw vectors
-				auto& sector = *cache->object(key);
+				auto& sector = cacheEntry.second;
 				for (int y = 0; y < SECTOR_SIZE; y++) {
 					for (int x = 0; x < SECTOR_SIZE; x++) {
 						auto vector = sector.getVector({x, y});
