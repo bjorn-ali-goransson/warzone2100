@@ -1002,7 +1002,7 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 		std::vector<Vector2i> goals = portalToGoals(leavePortal, localStartPoint);
 		localStartPoint = goals[0];
 
-		if (localFlowFieldCache.count(goals) > 0) {
+		if (localFlowFieldCache.count(goals) == 0) {
 			processFlowField(goals, portals, sectors, job.propulsion);
 		}
 	}
@@ -1011,7 +1011,7 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	// TODO: in future with better integration with Warzone, there might be multiple goals for a formation, so droids don't bump into each other
 	std::vector<Vector2i> finalGoals { job.mapGoal };
 
-	if (localFlowFieldCache.count(finalGoals) > 0) {
+	if (localFlowFieldCache.count(finalGoals) == 0) {
 		processFlowField(finalGoals, portals, sectors, job.propulsion);
 	}
 }
