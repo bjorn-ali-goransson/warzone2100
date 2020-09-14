@@ -21,9 +21,20 @@
 #include "lib/framework/wzapp.h"
 
 struct ComparableVector2i : Vector2i {
-	ComparableVector2i(Vector2i value){
+	ComparableVector2i(Vector2i value) : Vector2i(value) {}
 
-	}
+	inline bool operator<(const ComparableVector2i& b) const {
+		if(x < b.x){
+			return true;
+		}
+		if(x > b.x){
+			return false;
+		}
+		if(y < b.y){
+			return true;
+		}
+		return false;
+    }
 };
 
 // Sector is a square with side length of SECTOR_SIZE. 
@@ -1386,7 +1397,9 @@ Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned
 
 	if (!firstSectorPoints.empty())
 	{
-		return Portal(&thisSector, &otherSector, toComparableVectors(firstSectorPoints), toComparableVectors(secondSectorPoints));
+		std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
+		std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
+		return Portal(&thisSector, &otherSector, a, b);
 	}
 	else
 	{
