@@ -82,4 +82,4 @@
 
 	std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
 
-	void flowfieldDebugDraw();
+	void debugDrawFlowField();

@@ -334,11 +334,11 @@ std::pair<unsigned int, unsigned int> mapSourceGoalToPortals(Vector2i mapSource,
 	*/
 bool isForward(Vector2i source, Vector2i firstSectorGoal, Vector2i secondSectorGoal);
 
-std::deque<unsigned int> getPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
+std::deque<unsigned int> getFlowfieldPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
 std::vector<ComparableVector2i> portalToGoals(const Portal& portal, Vector2i currentPosition);
 Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, PROPULSION_TYPE propulsion);
 
-std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion);
+std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // +- x axis tile debug draw. Smaller values = less tiles drawn. "7" somewhat fits the default window resolution
@@ -393,22 +393,22 @@ void flowfieldDestroy() {
 	destroyFlowfieldCache();
 }
 
-std::deque<unsigned int> getPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, const PROPULSION_TYPE propulsion) {
+std::deque<unsigned int> getFlowfieldPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, const PROPULSION_TYPE propulsion) {
 	Vector2i source { map_coord(startX), map_coord(startY) };
 	Vector2i goal { map_coord(tX), map_coord(tY) };
 	
 	unsigned int sourcePortalId, goalPortalId;
 	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(source, goal, propulsion);
 
-	return getPathFromCache(sourcePortalId, goalPortalId, propulsion);
+	return getFlowfieldPathFromCache(sourcePortalId, goalPortalId, propulsion);
 }
 
 Vector2f getMovementVector(unsigned int nextPortalId, unsigned currentX, unsigned currentY, PROPULSION_TYPE propulsion) {
 	return getMovementVector(nextPortalId, { currentX, currentY }, propulsion);
 }
 
-std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid) {
-	return portalPathToCoordsPath(path, getPropulsionStats(psDroid)->propulsionType);
+std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid) {
+	return flowfieldPortalPathToCoordsPath(path, getPropulsionStats(psDroid)->propulsionType);
 }
 
 std::vector<ComparableVector2i> toComparableVectors(std::vector<Vector2i> values){
@@ -442,12 +442,12 @@ void debugDraw() {
 }
 
 // If the path finding system is shutdown or not
-static volatile bool fpathQuit = false;
+static volatile bool ffpathQuit = false;
 
 // threading stuff
-static WZ_THREAD        *fpathThread = nullptr;
-static WZ_MUTEX         *fpathMutex = nullptr;
-static WZ_SEMAPHORE     *fpathSemaphore = nullptr;
+static WZ_THREAD        *ffpathThread = nullptr;
+static WZ_MUTEX         *ffpathMutex = nullptr;
+static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
 using aStarJob = wz::packaged_task<ASTARREQUEST()>;
 static std::list<aStarJob>    aStarJobs;
 static std::unordered_map<uint32_t, wz::future<ASTARREQUEST>> aStarResults;
@@ -470,29 +470,29 @@ void calculateFlowFieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 	aStarJob task([job]() { return aStarJobExecute(job); });
 
 	// Add to end of list
-	wzMutexLock(fpathMutex);
+	wzMutexLock(ffpathMutex);
 	bool isFirstJob = aStarJobs.empty();
 	aStarJobs.push_back(std::move(task));
-	wzMutexUnlock(fpathMutex);
+	wzMutexUnlock(ffpathMutex);
 
 	if (isFirstJob)
 	{
-		wzSemaphorePost(fpathSemaphore);  // Wake up processing thread.
+		wzSemaphorePost(ffpathSemaphore);  // Wake up processing thread.
 	}
 }
 
 /** This runs in a separate thread */
-static int fpathThreadFunc(void *)
+static int ffpathThreadFunc(void *)
 {
-	wzMutexLock(fpathMutex);
+	wzMutexLock(ffpathMutex);
 
-	while (!fpathQuit)
+	while (!ffpathQuit)
 	{
 		if (aStarJobs.empty() && flowFieldJobs.empty())
 		{
-			wzMutexUnlock(fpathMutex);
-			wzSemaphoreWait(fpathSemaphore);  // Go to sleep until needed.
-			wzMutexLock(fpathMutex);
+			wzMutexUnlock(ffpathMutex);
+			wzSemaphoreWait(ffpathSemaphore);  // Go to sleep until needed.
+			wzMutexLock(ffpathMutex);
 			continue;
 		}
 
@@ -502,9 +502,9 @@ static int fpathThreadFunc(void *)
 			aStarJob aStarJob = std::move(aStarJobs.front());
 			aStarJobs.pop_front();
 
-			wzMutexUnlock(fpathMutex);
+			wzMutexUnlock(ffpathMutex);
 			aStarJob();
-			wzMutexLock(fpathMutex);
+			wzMutexLock(ffpathMutex);
 		}
 
 		while(!flowFieldJobs.empty()) // won't work so well with multiple threads
@@ -513,48 +513,48 @@ static int fpathThreadFunc(void *)
 			flowFieldJob flowFieldJob = std::move(flowFieldJobs.front());
 			flowFieldJobs.pop_front();
 
-			wzMutexUnlock(fpathMutex);
+			wzMutexUnlock(ffpathMutex);
 			flowFieldJob();
-			wzMutexLock(fpathMutex);
+			wzMutexLock(ffpathMutex);
 		}
 	}
-	wzMutexUnlock(fpathMutex);
+	wzMutexUnlock(ffpathMutex);
 	return 0;
 }
 
 
 // initialise the findpath module
-bool fpathInitialise()
+bool ffpathInitialise()
 {
 	// The path system is up
-	fpathQuit = false;
+	ffpathQuit = false;
 
-	if (!fpathThread)
+	if (!ffpathThread)
 	{
-		fpathMutex = wzMutexCreate();
-		fpathSemaphore = wzSemaphoreCreate(0);
-		fpathThread = wzThreadCreate(fpathThreadFunc, nullptr);
-		wzThreadStart(fpathThread);
+		ffpathMutex = wzMutexCreate();
+		ffpathSemaphore = wzSemaphoreCreate(0);
+		ffpathThread = wzThreadCreate(ffpathThreadFunc, nullptr);
+		wzThreadStart(ffpathThread);
 	}
 
 	return true;
 }
 
 
-void fpathShutdown()
+void ffpathShutdown()
 {
-	if (fpathThread)
+	if (ffpathThread)
 	{
 		// Signal the path finding thread to quit
-		fpathQuit = true;
-		wzSemaphorePost(fpathSemaphore);  // Wake up thread.
+		ffpathQuit = true;
+		wzSemaphorePost(ffpathSemaphore);  // Wake up thread.
 
-		wzThreadJoin(fpathThread);
-		fpathThread = nullptr;
-		wzMutexDestroy(fpathMutex);
-		fpathMutex = nullptr;
-		wzSemaphoreDestroy(fpathSemaphore);
-		fpathSemaphore = nullptr;
+		wzThreadJoin(ffpathThread);
+		ffpathThread = nullptr;
+		wzMutexDestroy(ffpathMutex);
+		ffpathMutex = nullptr;
+		wzSemaphoreDestroy(ffpathSemaphore);
+		ffpathSemaphore = nullptr;
 	}
 }
 
@@ -1516,7 +1516,7 @@ bool isForward(Vector2i source, Vector2i firstSectorGoal, Vector2i secondSectorG
 	return distFirst < distSecond;
 }
 
-std::deque<unsigned int> getPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
+std::deque<unsigned int> getFlowfieldPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
 	std::lock_guard<std::mutex> lock(portalPathMutex);
 	auto& localPortalPathCache = *portalPathCache[propulsionToIndex.at(propulsion)];
 
@@ -1555,7 +1555,7 @@ Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, 
 	return { vector.x, vector.y };
 }
 
-std::vector<Vector2i> portalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion) {
+std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion) {
 	auto& portals = portalArr[propulsionToIndex.at(propulsion)];
 
 	std::vector<Vector2i> coordsPath;
