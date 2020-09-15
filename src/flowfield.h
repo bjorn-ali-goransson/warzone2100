@@ -83,3 +83,11 @@
 	std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
 
 	void debugDrawFlowField();
+
+	/** Initialise the path-finding module.
+	 */
+	bool ffpathInitialise();
+
+	/** Shutdown the path-finding module.
+	 */
+	void ffpathShutdown();

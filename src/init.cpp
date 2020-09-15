@@ -57,6 +57,7 @@
 #include "edit3d.h"
 #include "effects.h"
 #include "fpath.h"
+#include "flowfield.h"
 #include "frend.h"
 #include "frontend.h"
 #include "game.h"
@@ -90,7 +91,6 @@
 #include "ingameop.h"
 #include "qtscript.h"
 #include "template.h"
-#include "flowfield.h"
 
 #include <algorithm>
 
@@ -768,6 +768,7 @@ void systemShutdown()
 	notificationsShutDown();
 	widgShutDown();
 	fpathShutdown();
+	ffpathShutdown();
 	flowfieldDestroy();
 	mapShutdown();
 	debug(LOG_MAIN, "shutting down everything else");
@@ -1116,6 +1117,10 @@ bool stageTwoInitialise()
 	{
 		return false;
 	}
+	if (!ffpathInitialise())
+	{
+		return false;
+	}
     flowfieldInit();
 
 	debug(LOG_MAIN, "stageTwoInitialise: done");
@@ -1132,6 +1137,7 @@ bool stageTwoShutDown()
 	debug(LOG_WZ, "== stageTwoShutDown ==");
 
 	fpathShutdown();
+	ffpathShutdown();
     flowfieldDestroy();
 
 	cdAudio_Stop();
@@ -1219,6 +1225,10 @@ bool stageThreeInitialise()
 
 	prepareScripts(getLevelLoadType() == GTYPE_SAVE_MIDMISSION || getLevelLoadType() == GTYPE_SAVE_START);
 
+	if (!ffpathInitialise())
+	{
+		return false;
+	}
 	if (!fpathInitialise())
 	{
 		return false;
