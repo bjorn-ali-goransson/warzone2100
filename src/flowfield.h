@@ -3,6 +3,7 @@
 #include "lib/framework/frame.h" // for statsdef.h
 #include "statsdef.h"
 #include <deque>
+#include <glm/gtx/transform.hpp>
 
 /*
 	Concept: http://www.gameaipro.com/GameAIPro/GameAIPro_Chapter23_Crowd_Pathfinding_and_Steering_Using_Flow_Field_Tiles.pdf
@@ -82,7 +83,7 @@
 
 	std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
 
-	void debugDrawFlowField();
+	void debugDrawFlowFields(const glm::mat4 &mvp);
 
 	/** Initialise the path-finding module.
 	 */

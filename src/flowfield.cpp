@@ -19,6 +19,7 @@
 #include "display3d.h"
 #include "map.h"
 #include "lib/framework/wzapp.h"
+#include <glm/gtx/transform.hpp>
 
 struct ComparableVector2i : Vector2i {
 	ComparableVector2i(Vector2i value) : Vector2i(value) {}
@@ -421,7 +422,7 @@ std::vector<ComparableVector2i> toComparableVectors(std::vector<Vector2i> values
 	return result;
 }
 
-void debugDraw() {
+void debugDrawFlowfields(const glm::mat4 &mvp) {
 	if (!isFlowfieldEnabled()) return;
 
 	if (COST_FIELD_DEBUG) {
@@ -1689,7 +1690,7 @@ void debugDrawPortalPath() {
 	}
 }
 
-void debugDrawFlowField() {
+void debugDrawFlowFields(const glm::mat4 &mvp) {
 	const int playerXTile = map_coord(player.p.x);
 	const int playerZTile = map_coord(player.p.z);
 
