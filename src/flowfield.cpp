@@ -268,16 +268,16 @@ struct VectorT {
 	}
 };
 
-class FlowFieldSector final {
+class FlowfieldSector final {
 public:
 	typedef std::array<std::array<VectorT, SECTOR_SIZE>, SECTOR_SIZE> vectorArrayT;
 
-	FlowFieldSector() = default;
-	FlowFieldSector& operator=(FlowFieldSector&) = delete;
-	FlowFieldSector& operator=(FlowFieldSector&&) = delete;
-	FlowFieldSector(FlowFieldSector&) = delete;
-	FlowFieldSector(FlowFieldSector&&) = default;
-	~FlowFieldSector() = default;
+	FlowfieldSector() = default;
+	FlowfieldSector& operator=(FlowfieldSector&) = delete;
+	FlowfieldSector& operator=(FlowfieldSector&&) = delete;
+	FlowfieldSector(FlowfieldSector&) = delete;
+	FlowfieldSector(FlowfieldSector&&) = default;
+	~FlowfieldSector() = default;
 
 	void setVector(Vector2i p, VectorT vector);
 	VectorT getVector(Vector2i p) const;
@@ -352,8 +352,8 @@ void debugTileDrawCost(AbstractSector* sector, Vector2i p, Vector2i screenXY);
 void debugDrawPortals();
 void debugDrawPortalPath();
 
-void debugDrawFlowFields(const glm::mat4 &mvp);
-void debugDrawFlowField(const glm::mat4 &mvp);
+void debugDrawFlowfields(const glm::mat4 &mvp);
+void debugDrawFlowfield(const glm::mat4 &mvp);
 
 struct ASTARREQUEST
 {
@@ -439,7 +439,7 @@ void debugDrawFlowfields(const glm::mat4 &mvp) {
 	}
 
 	if (VECTOR_FIELD_DEBUG) {
-		debugDrawFlowField(mvp);
+		debugDrawFlowfield(mvp);
 	}
 }
 
@@ -459,7 +459,7 @@ static std::unordered_map<uint32_t, wz::future<FLOWFIELDREQUEST>> flowFieldResul
 
 ASTARREQUEST aStarJobExecute(ASTARREQUEST job);
 
-void calculateFlowFieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
+void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
 								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
 	Vector2i source { map_coord(startX), map_coord(startY) };
 	Vector2i goal { map_coord(tX), map_coord(tY) };
@@ -601,7 +601,7 @@ std::mutex flowfieldMutex;
 
 // Caches
 typedef std::map<std::pair<unsigned int, unsigned int>, std::deque<unsigned int>> portalPathCacheT;
-typedef std::map<std::vector<ComparableVector2i>, std::unique_ptr<FlowFieldSector>> flowfieldCacheT;
+typedef std::map<std::vector<ComparableVector2i>, std::unique_ptr<FlowfieldSector>> flowfieldCacheT;
 
 // Workaround because QCache is neitVector2iher copyable nor movable
 std::array<std::unique_ptr<portalPathCacheT>, 4> portalPathCache {
@@ -949,7 +949,7 @@ unsigned int PortalAStar::distanceCommon(const Portal& portal1, const Portal& po
 }
 
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
-void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path);
+void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path);
 
 ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
 
@@ -973,7 +973,7 @@ ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
 		_debugPortalPath = path;
 	}
 
-	processFlowFields(job, path);
+	processFlowfields(job, path);
 
 	return job;
 }
@@ -1010,21 +1010,21 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 	}
 }
 
-void FlowFieldSector::setVector(Vector2i p, VectorT vector) {
+void FlowfieldSector::setVector(Vector2i p, VectorT vector) {
 	vectors[p.x][p.y] = vector;
 }
 
-VectorT FlowFieldSector::getVector(Vector2i p) const {
+VectorT FlowfieldSector::getVector(Vector2i p) const {
 	return vectors[p.x][p.y];
 }
 
-void processFlowField(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
+void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
 unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
 
-void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
+void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	auto& portals = portalArr[propulsionToIndex.at(job.propulsion)];
 	auto& sectors = costFields[propulsionToIndex.at(job.propulsion)];
-	auto& localFlowFieldCache = *flowfieldCache[propulsionToIndex.at(job.propulsion)];
+	auto& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(job.propulsion)];
 
 	Vector2i localStartPoint = job.mapSource;
 
@@ -1033,8 +1033,8 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 		std::vector<ComparableVector2i> goals = portalToGoals(leavePortal, localStartPoint);
 		localStartPoint = goals[0];
 
-		if (localFlowFieldCache.count(goals) == 0) {
-			processFlowField(goals, portals, sectors, job.propulsion);
+		if (localFlowfieldCache.count(goals) == 0) {
+			processFlowfield(goals, portals, sectors, job.propulsion);
 		}
 	}
 
@@ -1042,17 +1042,17 @@ void processFlowFields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	// TODO: in future with better integration with Warzone, there might be multiple goals for a formation, so droids don't bump into each other
 	std::vector<ComparableVector2i> finalGoals { job.mapGoal };
 
-	if (localFlowFieldCache.count(finalGoals) == 0) {
-		processFlowField(finalGoals, portals, sectors, job.propulsion);
+	if (localFlowfieldCache.count(finalGoals) == 0) {
+		processFlowfield(finalGoals, portals, sectors, job.propulsion);
 	}
 }
 
 void calculateIntegrationField(const std::vector<ComparableVector2i>& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
-void calculateFlowField(FlowFieldSector* flowField, Sector* integrationField);
+void calculateFlowfield(FlowfieldSector* flowField, Sector* integrationField);
 
-void processFlowField(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
-	FlowFieldSector* flowField = new FlowFieldSector();
+void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
+	FlowfieldSector* flowField = new FlowfieldSector();
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
 	auto& sector = sectors[sectorId];
 
@@ -1062,12 +1062,12 @@ void processFlowField(std::vector<ComparableVector2i> goals, portalMapT& portals
 	Sector* integrationField = new Sector();
 	calculateIntegrationField(goals, sectors, sector.get(), integrationField);
 
-	calculateFlowField(flowField, integrationField);
+	calculateFlowfield(flowField, integrationField);
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
 		auto cache = flowfieldCache[propulsionToIndex.at(propulsion)].get();
-		cache->insert(std::make_pair(goals, std::unique_ptr<FlowFieldSector>(flowField)));
+		cache->insert(std::make_pair(goals, std::unique_ptr<FlowfieldSector>(flowField)));
 	}
 }
 
@@ -1126,7 +1126,7 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorLi
 	}
 }
 
-void calculateFlowField(FlowFieldSector* flowField, Sector* integrationField) {
+void calculateFlowfield(FlowfieldSector* flowField, Sector* integrationField) {
 	for (int y = 0; y < SECTOR_SIZE; y++) {
 		for (int x = 0; x < SECTOR_SIZE; x++) {
 			Vector2i p = {x, y};
@@ -1691,7 +1691,7 @@ void debugDrawPortalPath() {
 	}
 }
 
-void debugDrawFlowField(const glm::mat4 &mvp) {
+void debugDrawFlowfield(const glm::mat4 &mvp) {
 	const int playerXTile = map_coord(player.p.x);
 	const int playerZTile = map_coord(player.p.z);
 

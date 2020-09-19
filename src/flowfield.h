@@ -74,7 +74,7 @@
 	 * Public interface same as fpathRoute for compatibility.
 	 * Most fields are not yet used in current flowfield implementation, but I wanted it to be compatible with fpath.cpp
 	 */
-	void calculateFlowFieldsAsync(MOVE_CONTROL *psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
+	void calculateFlowfieldsAsync(MOVE_CONTROL *psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
 								  DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const &dstStructure);
 
 	std::deque<unsigned int> getFlowfieldPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, PROPULSION_TYPE propulsion);
@@ -83,7 +83,7 @@
 
 	std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
 
-	void debugDrawFlowFields(const glm::mat4 &mvp);
+	void debugDrawFlowfields(const glm::mat4 &mvp);
 
 	/** Initialise the path-finding module.
 	 */
