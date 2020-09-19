@@ -352,7 +352,8 @@ void debugTileDrawCost(AbstractSector* sector, Vector2i p, Vector2i screenXY);
 void debugDrawPortals();
 void debugDrawPortalPath();
 
-void debugDrawFlowField();
+void debugDrawFlowFields(const glm::mat4 &mvp);
+void debugDrawFlowField(const glm::mat4 &mvp);
 
 struct ASTARREQUEST
 {
@@ -438,7 +439,7 @@ void debugDrawFlowfields(const glm::mat4 &mvp) {
 	}
 
 	if (VECTOR_FIELD_DEBUG) {
-		debugDrawFlowField();
+		debugDrawFlowField(mvp);
 	}
 }
 
@@ -1690,7 +1691,7 @@ void debugDrawPortalPath() {
 	}
 }
 
-void debugDrawFlowFields(const glm::mat4 &mvp) {
+void debugDrawFlowField(const glm::mat4 &mvp) {
 	const int playerXTile = map_coord(player.p.x);
 	const int playerZTile = map_coord(player.p.z);
 
