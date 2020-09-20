@@ -20,6 +20,13 @@
 #include "map.h"
 #include "lib/framework/wzapp.h"
 #include <glm/gtx/transform.hpp>
+#include "lib/framework/opengl.h"
+#include "lib/ivis_opengl/piedef.h"
+#include "lib/ivis_opengl/piefunc.h"
+#include "lib/ivis_opengl/piestate.h"
+#include "lib/ivis_opengl/piemode.h"
+#include "lib/ivis_opengl/pieblitfunc.h"
+#include "lib/ivis_opengl/pieclip.h"
 
 struct ComparableVector2i : Vector2i {
 	ComparableVector2i(Vector2i value) : Vector2i(value) {}
@@ -1691,7 +1698,139 @@ void debugDrawPortalPath() {
 	}
 }
 
+static GLuint smokeTrailShaderProgram = 0;
+
 void debugDrawFlowfield(const glm::mat4 &mvp) {
+	if(smokeTrailShaderProgram == 0)
+	{
+		smokeTrailShaderProgram = glCreateProgram();
+		glBindAttribLocation(smokeTrailShaderProgram, 0, "vertex");
+
+		GLint status;
+		GLint infologLen = 0;
+		GLint charsWritten = 0;
+		GLchar *infoLog = nullptr;
+
+		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+		const char* vertexShaderSource[1] = {
+			"attribute vec4 c;uniform mat4 ModelViewProjectionMatrix;void main(void) {gl_Position = ModelViewProjectionMatrix * c;}"
+		};
+		glShaderSource(vertexShader, 1, vertexShaderSource, nullptr);
+		glCompileShader(vertexShader);
+
+		glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
+
+		if (!status)
+		{
+			printf("Error compiling vertex shader\n");
+			glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &infologLen);
+			infoLog = (GLchar *)malloc(infologLen);
+			glGetShaderInfoLog(vertexShader, infologLen, &charsWritten, infoLog);
+			printf("%s\n", infoLog);
+			free(infoLog);
+			exit(1);
+		}
+
+		glAttachShader(smokeTrailShaderProgram, vertexShader);
+
+		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+		const char* fragmentShaderSource[1] = {
+			"void main(void) {gl_FragColor=vec4(1);}"
+		};
+		glShaderSource(fragmentShader, 1, fragmentShaderSource, nullptr);
+		glCompileShader(fragmentShader);
+
+		glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
+
+		if (!status)
+		{
+			printf("Error compiling fragment shader\n");
+			glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &infologLen);
+			infoLog = (GLchar *)malloc(infologLen);
+			glGetShaderInfoLog(fragmentShader, infologLen, &charsWritten, infoLog);
+			printf("%s\n", infoLog);
+			free(infoLog);
+			exit(1);
+		}
+
+		glAttachShader(smokeTrailShaderProgram, fragmentShader);
+
+		glLinkProgram(smokeTrailShaderProgram);
+
+		// Check for linkage errors
+		glGetProgramiv(smokeTrailShaderProgram, GL_LINK_STATUS, &status);
+		if (!status)
+		{
+			printf("Error linking program\n");
+			glGetProgramiv(smokeTrailShaderProgram, GL_INFO_LOG_LENGTH, &infologLen);
+			infoLog = (GLchar *)malloc(infologLen);
+			glGetProgramInfoLog(smokeTrailShaderProgram, infologLen, &charsWritten, infoLog);
+			printf("%s\n", infoLog);
+			free(infoLog);
+			exit(1);
+		}
+	}
+
+	glUseProgram(smokeTrailShaderProgram);
+	pie_SetRendMode(REND_ADDITIVE);
+	glDepthMask(GL_FALSE);
+	glDisable(GL_CULL_FACE);
+
+	std::array<float, 15> vertexCoordinates = {
+		0, 300, 0,
+		-100, 500, 0,
+		100, 500, 0,
+	};
+
+	glUniformMatrix4fv(glGetUniformLocation(smokeTrailShaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mvp));
+
+	static gfx_api::buffer* vertexCoordinatesBuffer = nullptr;
+	if (!vertexCoordinatesBuffer)
+		vertexCoordinatesBuffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer, gfx_api::context::buffer_storage_hint::stream_draw);
+	vertexCoordinatesBuffer->upload(vertexCoordinates.size() * sizeof(float), vertexCoordinates.data());
+	vertexCoordinatesBuffer->bind();
+
+	glVertexAttribPointer(glGetAttribLocation(smokeTrailShaderProgram, "c"), 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(glGetAttribLocation(smokeTrailShaderProgram, "c"));
+
+	glDrawArrays(GL_TRIANGLES, 0, vertexCoordinates.size() / 3);
+	glDisableVertexAttribArray(glGetAttribLocation(smokeTrailShaderProgram, "c"));
+
+	glDepthMask(GL_TRUE);
+	glEnable(GL_CULL_FACE);
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	const int playerXTile = map_coord(player.p.x);
 	const int playerZTile = map_coord(player.p.z);
 
