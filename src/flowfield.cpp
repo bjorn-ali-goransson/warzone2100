@@ -1780,10 +1780,19 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	
 	
 
+	const int playerXTile = map_coord(player.p.x);
+	const int playerXTileA = world_coord(playerXTile);
+	const int playerXTileB = world_coord(playerXTile + 1);
+	const int playerZTile = map_coord(player.p.z);
+	const int playerZTileA = world_coord(playerZTile);
+	const int playerZTileB = world_coord(playerZTile + 1);
+	
+				auto height = map_TileHeight(playerXTile, playerZTile);
+
 	std::array<float, 15> vertexCoordinates = {
-		player.p.x + 0.f,    0 + 300.f, -player.p.z + 0.f,
-		player.p.x + -100.f, 0 + 500.f, -player.p.z + 0.f,
-		player.p.x + 100.f,  0 + 500.f, -player.p.z + 0.f,
+		playerXTileA + 0.f, height + 10.f, -playerZTileA + 0.f,
+		playerXTileB + 0.f, height + 10.f, -playerZTileA + 0.f,
+		playerXTileB + 0.f, height + 10.f, -playerZTileB + 0.f,
 	};
 
 	glUniformMatrix4fv(glGetUniformLocation(smokeTrailShaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mvp));
@@ -1808,35 +1817,6 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 
 
-
-
-
-
-
-
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	const int playerXTile = map_coord(player.p.x);
-	const int playerZTile = map_coord(player.p.z);
 
 	const auto convertX = [=](const unsigned int x) {
 		return 60 + ((x + (DEBUG_DRAW_X_DELTA - playerXTile)) << 6);
