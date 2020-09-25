@@ -1776,10 +1776,14 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
 
+	// std::vector<float> vertexCoordinates;
+	
+	
+
 	std::array<float, 15> vertexCoordinates = {
-		0, 300, 0,
-		-100, 500, 0,
-		100, 500, 0,
+		player.p.x + 0.f,    0 + 300.f, -player.p.z + 0.f,
+		player.p.x + -100.f, 0 + 500.f, -player.p.z + 0.f,
+		player.p.x + 100.f,  0 + 500.f, -player.p.z + 0.f,
 	};
 
 	glUniformMatrix4fv(glGetUniformLocation(smokeTrailShaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mvp));
