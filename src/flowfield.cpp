@@ -355,8 +355,6 @@ constexpr const unsigned int DEBUG_DRAW_X_DELTA = 7;
 // +- y axis tile debug draw
 constexpr const unsigned int DEBUG_DRAW_Y_DELTA = 6;
 
-void debugDrawCostField();
-void debugTileDrawCost(AbstractSector* sector, Vector2i p, Vector2i screenXY);
 void debugDrawPortals();
 void debugDrawPortalPath();
 
@@ -1577,56 +1575,6 @@ std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned 
 	});
 
 	return coordsPath;
-}
-
-void debugDrawCostField()
-{
-	const auto& groundSectors = costFields[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
-	if (groundSectors.empty()) return;
-
-	const int playerXTile = map_coord(player.p.x);
-	const int playerZTile = map_coord(player.p.z);
-
-	const int xDelta = DEBUG_DRAW_X_DELTA;
-	const int yDelta = DEBUG_DRAW_Y_DELTA;
-
-	for (int y = -yDelta; y <= yDelta; y++)
-	{
-		for (int x = -xDelta; x <= xDelta; x++)
-		{
-			const int actualX = playerXTile + x;
-			const int actualY = playerZTile + y;
-
-			Vector2i p = {actualX, actualY};
-
-			if (tileOnMap(actualX, actualY))
-			{
-				const unsigned int sectorId = Sector::getIdByCoords(p);
-				debugTileDrawCost(groundSectors[sectorId].get(), p, {x + xDelta, y + yDelta});
-			}
-		}
-	}
-}
-
-void debugTileDrawCost(AbstractSector* sector, Vector2i p, Vector2i screenXY)
-{
-	WzText costText(std::to_string(sector->getTile(p).cost), font_small);
-	// HACK
-	// I have completely NO IDEA how to draw stuff correctly. This code is by trial-and-error.
-	// It's debug only, but it could be a bit better. Too many magic numers, and works only on initial zoom and rotation.
-	const unsigned int renderX = 40 + (screenXY.x << 6);
-	const unsigned int renderY = 20 + (screenXY.y << 6);
-	costText.render(renderX, renderY, WZCOL_TEXT_BRIGHT);
-
-	const bool topLeftCorner = (p.x % SECTOR_SIZE == 0) && (p.y % SECTOR_SIZE == 0);
-	const bool bottomLeftCorner = (p.x % SECTOR_SIZE == 0) && (p.y % SECTOR_SIZE == SECTOR_SIZE - 1);
-	const bool topRightCorner = (p.x % SECTOR_SIZE == SECTOR_SIZE - 1) && (p.y % SECTOR_SIZE == 0);
-	const bool bottomRightCorner = (p.x % SECTOR_SIZE == SECTOR_SIZE - 1) && (p.y % SECTOR_SIZE == SECTOR_SIZE - 1);
-
-	if (topLeftCorner || bottomLeftCorner || topRightCorner || bottomRightCorner)
-	{
-		iV_Box(renderX, renderY - 10, renderX + 60, renderY + 50, WZCOL_WHITE);
-	}
 }
 
 void debugDrawPortals()
