@@ -1702,40 +1702,48 @@ void debugDrawPortalPath() {
 void debugDrawFlowfield(const glm::mat4 &mvp) {
 	pie_SetRendMode(REND_OPAQUE);
 
-	// std::vector<float> vertexCoordinates;
+	const auto playerXTile = map_coord(player.p.x);
+	const auto playerZTile = map_coord(player.p.z);
 	
-	
+	// const auto& groundSectors = costFields[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
 
-	const int playerXTile = map_coord(player.p.x);
-	const float playerXTileA = world_coord(playerXTile);
-	const float playerXTileB = world_coord(playerXTile + 1);
-	const int playerZTile = map_coord(player.p.z);
-	const float playerZTileA = world_coord(playerZTile);
-	const float playerZTileB = world_coord(playerZTile + 1);
-	
-	float height = map_TileHeight(playerXTile, playerZTile);
+	for (auto y = -DEBUG_DRAW_Y_DELTA; y <= DEBUG_DRAW_Y_DELTA; y++)
+	{
+		for (auto x = -DEBUG_DRAW_X_DELTA; x <= DEBUG_DRAW_X_DELTA; x++)
+		{
+			const auto actualX = playerXTile + x;
+			const auto actualY = playerZTile + y;
 
-	Vector2i aa, ab, ba, bb;
-	const auto x1 = Vector3i(playerXTileA, height + 10, -playerZTileA);
-	const auto x2 = Vector3i(playerXTileA, height + 10, -playerZTileB);
-	const auto x3 = Vector3i(playerXTileB, height + 10, -playerZTileA);
-	const auto x4 = Vector3i(playerXTileB, height + 10, -playerZTileB);
-	pie_RotateProject(&x1, mvp, &aa);
-	pie_RotateProject(&x2, mvp, &ab);
-	pie_RotateProject(&x3, mvp, &ba);
-	pie_RotateProject(&x4, mvp, &bb);
+			Vector2i p = {actualX, actualY};
 
-	printf("aa (%i, %i)\n", aa.x, aa.y);
-	printf("ab (%i, %i)\n", ab.x, ab.y);
-	printf("ba (%i, %i)\n", ba.x, ba.y);
-	printf("bb (%i, %i)\n", bb.x, bb.y);
+			// if (tileOnMap(actualX, actualY))
+			// {
+				const float X1 = world_coord(p.x);
+				const float X2 = world_coord(p.x + 1);
+				const float Y1 = world_coord(p.y);
+				const float Y2 = world_coord(p.y + 1);
+				
+				float height = map_TileHeight(p.x, p.y);
 
-	iV_Lines({
-		{ aa.x, aa.y, ab.x, ab.y },
-		{ aa.x, aa.y, ba.x, ba.y },
-		{ bb.x, bb.y, ab.x, ab.y },
-		{ bb.x, bb.y, ba.x, ba.y },
-	}, WZCOL_TEAM2);
+				Vector2i aa, ab, ba, bb;
+				const auto AA = Vector3i(X1, height + 10, -Y1);
+				const auto AB = Vector3i(X1, height + 10, -Y2);
+				const auto BA = Vector3i(X2, height + 10, -Y1);
+				const auto BB = Vector3i(X2, height + 10, -Y2);
+				pie_RotateProject(&AA, mvp, &aa);
+				pie_RotateProject(&AB, mvp, &ab);
+				pie_RotateProject(&BA, mvp, &ba);
+				pie_RotateProject(&BB, mvp, &bb);
+
+				iV_Lines({
+					{ aa.x, aa.y, ab.x, ab.y },
+					{ aa.x, aa.y, ba.x, ba.y },
+					{ bb.x, bb.y, ab.x, ab.y },
+					{ bb.x, bb.y, ba.x, ba.y },
+				}, WZCOL_TEAM2);
+			// }
+		}
+	}
 
 
 
