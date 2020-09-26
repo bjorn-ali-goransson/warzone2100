@@ -1740,7 +1740,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 			const unsigned int sectorId = Sector::getIdByCoords({x, z});
 			auto sector = groundSectors[sectorId].get();
-			WzText costText(std::to_string(sector->getTile({x, z}).cost), font_small);
+			WzText costText(std::to_string(sector->getTile({x, z}).cost), font_medium);
 			costText.render((aa.x + bb.x) / 2, (aa.y + bb.y) / 2, WZCOL_TEXT_BRIGHT);
 	 	}
 	}
