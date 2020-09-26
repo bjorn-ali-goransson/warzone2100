@@ -1796,7 +1796,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 		playerXTileB, height + 10, -playerZTileB,
 	};
 
-	glUniformMatrix4fv(glGetUniformLocation(smokeTrailShaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mvp));
+	glUniformMatrix4fv(glGetUniformLocation(smokeTrailShaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * mvp));
 
 	static gfx_api::buffer* vertexCoordinatesBuffer = nullptr;
 	if (!vertexCoordinatesBuffer)
@@ -1814,14 +1814,19 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	glEnable(GL_CULL_FACE);
 
 	Vector2i aa, ab, ba, bb;
-	const auto x1 = Vector3i(playerXTileA, height + 10, playerZTileA);
-	const auto x2 = Vector3i(playerXTileA, height + 10, playerZTileB);
-	const auto x3 = Vector3i(playerXTileB, height + 10, playerZTileA);
-	const auto x4 = Vector3i(playerXTileB, height + 10, playerZTileB);
+	const auto x1 = Vector3i(playerXTileA, height + 10, -playerZTileA);
+	const auto x2 = Vector3i(playerXTileA, height + 10, -playerZTileB);
+	const auto x3 = Vector3i(playerXTileB, height + 10, -playerZTileA);
+	const auto x4 = Vector3i(playerXTileB, height + 10, -playerZTileB);
 	pie_RotateProject(&x1, mvp, &aa);
 	pie_RotateProject(&x2, mvp, &ab);
 	pie_RotateProject(&x3, mvp, &ba);
 	pie_RotateProject(&x4, mvp, &bb);
+
+	printf("aa (%i, %i)\n", aa.x, aa.y);
+	printf("ab (%i, %i)\n", ab.x, ab.y);
+	printf("ba (%i, %i)\n", ba.x, ba.y);
+	printf("bb (%i, %i)\n", bb.x, bb.y);
 
 	iV_Line(aa.x, aa.y, ab.x, ab.y, WZCOL_TEAM2);
 
