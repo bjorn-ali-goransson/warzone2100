@@ -435,7 +435,7 @@ void debugDrawFlowfields(const glm::mat4 &mvp) {
 	if (!isFlowfieldEnabled()) return;
 
 	if (COST_FIELD_DEBUG) {
-		debugDrawCostField();
+		//debugDrawCostField();
 	}
 
 	if (PORTALS_DEBUG) {
@@ -1699,83 +1699,8 @@ void debugDrawPortalPath() {
 	}
 }
 
-static GLuint smokeTrailShaderProgram = 0;
-
 void debugDrawFlowfield(const glm::mat4 &mvp) {
-	if(smokeTrailShaderProgram == 0)
-	{
-		smokeTrailShaderProgram = glCreateProgram();
-		glBindAttribLocation(smokeTrailShaderProgram, 0, "vertex");
-
-		GLint status;
-		GLint infologLen = 0;
-		GLint charsWritten = 0;
-		GLchar *infoLog = nullptr;
-
-		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-		const char* vertexShaderSource[1] = {
-			"attribute vec4 c;uniform mat4 ModelViewProjectionMatrix;void main(void) {gl_Position = ModelViewProjectionMatrix * c;}"
-		};
-		glShaderSource(vertexShader, 1, vertexShaderSource, nullptr);
-		glCompileShader(vertexShader);
-
-		glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
-
-		if (!status)
-		{
-			printf("Error compiling vertex shader\n");
-			glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &infologLen);
-			infoLog = (GLchar *)malloc(infologLen);
-			glGetShaderInfoLog(vertexShader, infologLen, &charsWritten, infoLog);
-			printf("%s\n", infoLog);
-			free(infoLog);
-			exit(1);
-		}
-
-		glAttachShader(smokeTrailShaderProgram, vertexShader);
-
-		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		const char* fragmentShaderSource[1] = {
-			"void main(void) {gl_FragColor=vec4(1);}"
-		};
-		glShaderSource(fragmentShader, 1, fragmentShaderSource, nullptr);
-		glCompileShader(fragmentShader);
-
-		glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
-
-		if (!status)
-		{
-			printf("Error compiling fragment shader\n");
-			glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &infologLen);
-			infoLog = (GLchar *)malloc(infologLen);
-			glGetShaderInfoLog(fragmentShader, infologLen, &charsWritten, infoLog);
-			printf("%s\n", infoLog);
-			free(infoLog);
-			exit(1);
-		}
-
-		glAttachShader(smokeTrailShaderProgram, fragmentShader);
-
-		glLinkProgram(smokeTrailShaderProgram);
-
-		// Check for linkage errors
-		glGetProgramiv(smokeTrailShaderProgram, GL_LINK_STATUS, &status);
-		if (!status)
-		{
-			printf("Error linking program\n");
-			glGetProgramiv(smokeTrailShaderProgram, GL_INFO_LOG_LENGTH, &infologLen);
-			infoLog = (GLchar *)malloc(infologLen);
-			glGetProgramInfoLog(smokeTrailShaderProgram, infologLen, &charsWritten, infoLog);
-			printf("%s\n", infoLog);
-			free(infoLog);
-			exit(1);
-		}
-	}
-
-	glUseProgram(smokeTrailShaderProgram);
-	pie_SetRendMode(REND_ADDITIVE);
-	glDepthMask(GL_FALSE);
-	glDisable(GL_CULL_FACE);
+	pie_SetRendMode(REND_OPAQUE);
 
 	// std::vector<float> vertexCoordinates;
 	
@@ -1789,29 +1714,6 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	const float playerZTileB = world_coord(playerZTile + 1);
 	
 	float height = map_TileHeight(playerXTile, playerZTile);
-
-	std::array<float, 15> vertexCoordinates = {
-		playerXTileA, height + 10, -playerZTileA,
-		playerXTileB, height + 10, -playerZTileA,
-		playerXTileB, height + 10, -playerZTileB,
-	};
-
-	glUniformMatrix4fv(glGetUniformLocation(smokeTrailShaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(pie_PerspectiveGet() * mvp));
-
-	static gfx_api::buffer* vertexCoordinatesBuffer = nullptr;
-	if (!vertexCoordinatesBuffer)
-		vertexCoordinatesBuffer = gfx_api::context::get().create_buffer_object(gfx_api::buffer::usage::vertex_buffer, gfx_api::context::buffer_storage_hint::stream_draw);
-	vertexCoordinatesBuffer->upload(vertexCoordinates.size() * sizeof(float), vertexCoordinates.data());
-	vertexCoordinatesBuffer->bind();
-
-	glVertexAttribPointer(glGetAttribLocation(smokeTrailShaderProgram, "c"), 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(glGetAttribLocation(smokeTrailShaderProgram, "c"));
-
-	glDrawArrays(GL_TRIANGLES, 0, vertexCoordinates.size() / 3);
-	glDisableVertexAttribArray(glGetAttribLocation(smokeTrailShaderProgram, "c"));
-
-	glDepthMask(GL_TRUE);
-	glEnable(GL_CULL_FACE);
 
 	Vector2i aa, ab, ba, bb;
 	const auto x1 = Vector3i(playerXTileA, height + 10, -playerZTileA);
@@ -1828,7 +1730,12 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	printf("ba (%i, %i)\n", ba.x, ba.y);
 	printf("bb (%i, %i)\n", bb.x, bb.y);
 
-	iV_Line(aa.x, aa.y, ab.x, ab.y, WZCOL_TEAM2);
+	iV_Lines({
+		{ aa.x, aa.y, ab.x, ab.y },
+		{ aa.x, aa.y, ba.x, ba.y },
+		{ bb.x, bb.y, ab.x, ab.y },
+		{ bb.x, bb.y, ba.x, ba.y },
+	}, WZCOL_TEAM2);
 
 
 
