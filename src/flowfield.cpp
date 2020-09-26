@@ -15,6 +15,7 @@
 #include "lib/ivis_opengl/pieblitfunc.h"
 #include "lib/ivis_opengl/piepalette.h"
 #include "lib/ivis_opengl/textdraw.h"
+#include "lib/ivis_opengl/piematrix.h"
 
 #include "display3d.h"
 #include "map.h"
@@ -1781,18 +1782,18 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	
 
 	const int playerXTile = map_coord(player.p.x);
-	const int playerXTileA = world_coord(playerXTile);
-	const int playerXTileB = world_coord(playerXTile + 1);
+	const float playerXTileA = world_coord(playerXTile);
+	const float playerXTileB = world_coord(playerXTile + 1);
 	const int playerZTile = map_coord(player.p.z);
-	const int playerZTileA = world_coord(playerZTile);
-	const int playerZTileB = world_coord(playerZTile + 1);
+	const float playerZTileA = world_coord(playerZTile);
+	const float playerZTileB = world_coord(playerZTile + 1);
 	
-				auto height = map_TileHeight(playerXTile, playerZTile);
+	float height = map_TileHeight(playerXTile, playerZTile);
 
 	std::array<float, 15> vertexCoordinates = {
-		playerXTileA + 0.f, height + 10.f, -playerZTileA + 0.f,
-		playerXTileB + 0.f, height + 10.f, -playerZTileA + 0.f,
-		playerXTileB + 0.f, height + 10.f, -playerZTileB + 0.f,
+		playerXTileA, height + 10, -playerZTileA,
+		playerXTileB, height + 10, -playerZTileA,
+		playerXTileB, height + 10, -playerZTileB,
 	};
 
 	glUniformMatrix4fv(glGetUniformLocation(smokeTrailShaderProgram, "ModelViewProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mvp));
@@ -1812,8 +1813,17 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	glDepthMask(GL_TRUE);
 	glEnable(GL_CULL_FACE);
 
+	Vector2i aa, ab, ba, bb;
+	const auto x1 = Vector3i(playerXTileA, height + 10, playerZTileA);
+	const auto x2 = Vector3i(playerXTileA, height + 10, playerZTileB);
+	const auto x3 = Vector3i(playerXTileB, height + 10, playerZTileA);
+	const auto x4 = Vector3i(playerXTileB, height + 10, playerZTileB);
+	pie_RotateProject(&x1, mvp, &aa);
+	pie_RotateProject(&x2, mvp, &ab);
+	pie_RotateProject(&x3, mvp, &ba);
+	pie_RotateProject(&x4, mvp, &bb);
 
-
+	iV_Line(aa.x, aa.y, ab.x, ab.y, WZCOL_TEAM2);
 
 
 
