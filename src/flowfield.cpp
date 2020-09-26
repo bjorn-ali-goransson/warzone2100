@@ -1705,47 +1705,45 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	const auto playerXTile = map_coord(player.p.x);
 	const auto playerZTile = map_coord(player.p.z);
 	
-	// const auto& groundSectors = costFields[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
+	const auto& groundSectors = costFields[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
 
-	for (auto y = -DEBUG_DRAW_Y_DELTA; y <= DEBUG_DRAW_Y_DELTA; y++)
+	for (auto deltaX = -6; deltaX <= 6; deltaX++)
 	{
-		for (auto x = -DEBUG_DRAW_X_DELTA; x <= DEBUG_DRAW_X_DELTA; x++)
+		for (auto deltaZ = -6; deltaZ <= 6; deltaZ++)
 		{
-			const auto actualX = playerXTile + x;
-			const auto actualY = playerZTile + y;
+			const auto x = playerXTile + deltaX;
+			const auto z = playerZTile + deltaZ;
 
-			Vector2i p = {actualX, actualY};
+			const float X1 = world_coord(x);
+			const float X2 = world_coord(x + 1);
+			const float Z1 = world_coord(z);
+			const float Z2 = world_coord(z + 1);
+			
+			float height = map_TileHeight(x, z);
 
-			// if (tileOnMap(actualX, actualY))
-			// {
-				const float X1 = world_coord(p.x);
-				const float X2 = world_coord(p.x + 1);
-				const float Y1 = world_coord(p.y);
-				const float Y2 = world_coord(p.y + 1);
-				
-				float height = map_TileHeight(p.x, p.y);
+			Vector2i aa, ab, ba, bb;
+			const auto AA = Vector3i(X1, height + 10, -Z1);
+			const auto AB = Vector3i(X1, height + 10, -Z2);
+			const auto BA = Vector3i(X2, height + 10, -Z1);
+			const auto BB = Vector3i(X2, height + 10, -Z2);
+			pie_RotateProject(&AA, mvp, &aa);
+			pie_RotateProject(&AB, mvp, &ab);
+			pie_RotateProject(&BA, mvp, &ba);
+			pie_RotateProject(&BB, mvp, &bb);
 
-				Vector2i aa, ab, ba, bb;
-				const auto AA = Vector3i(X1, height + 10, -Y1);
-				const auto AB = Vector3i(X1, height + 10, -Y2);
-				const auto BA = Vector3i(X2, height + 10, -Y1);
-				const auto BB = Vector3i(X2, height + 10, -Y2);
-				pie_RotateProject(&AA, mvp, &aa);
-				pie_RotateProject(&AB, mvp, &ab);
-				pie_RotateProject(&BA, mvp, &ba);
-				pie_RotateProject(&BB, mvp, &bb);
+			iV_Lines({
+				{ aa.x, aa.y, ab.x, ab.y },
+				{ aa.x, aa.y, ba.x, ba.y },
+				{ bb.x, bb.y, ab.x, ab.y },
+				{ bb.x, bb.y, ba.x, ba.y },
+			}, WZCOL_TEAM2);
 
-				iV_Lines({
-					{ aa.x, aa.y, ab.x, ab.y },
-					{ aa.x, aa.y, ba.x, ba.y },
-					{ bb.x, bb.y, ab.x, ab.y },
-					{ bb.x, bb.y, ba.x, ba.y },
-				}, WZCOL_TEAM2);
-			// }
-		}
+			const unsigned int sectorId = Sector::getIdByCoords({x, z});
+			auto sector = groundSectors[sectorId].get();
+			WzText costText(std::to_string(sector->getTile({x, z}).cost), font_small);
+			costText.render((aa.x + bb.x) / 2, (aa.y + bb.y) / 2, WZCOL_TEXT_BRIGHT);
+	 	}
 	}
-
-
 
 
 	const auto convertX = [=](const unsigned int x) {
