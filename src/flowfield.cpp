@@ -1730,6 +1730,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			
 			float height = map_TileHeight(x, z);
 
+			// tile
+
 			iV_PolyLine({
 				{ XA, height, -ZA },
 				{ XA, height, -ZB },
@@ -1737,6 +1739,24 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				{ XB, height, -ZA },
 				{ XA, height, -ZA },
 			}, mvp, WZCOL_TEAM2);
+
+			// sector
+
+			if(x % SECTOR_SIZE == 0){
+				iV_PolyLine({
+					{ (XA + XB) / 2, height, -ZA },
+					{ (XA + XB) / 2, height, -ZB },
+				}, mvp, WZCOL_WHITE);
+			}
+
+			if(z % SECTOR_SIZE == 0){
+				iV_PolyLine({
+					{ XA, height, -(ZA + ZB) / 2 },
+					{ XB, height, -(ZA + ZB) / 2 },
+				}, mvp, WZCOL_WHITE);
+			}
+
+			// cost
 
 			const Vector3i a = { (XA + XB) / 2, height, -(ZA + ZB) / 2 };
 			Vector2i b;

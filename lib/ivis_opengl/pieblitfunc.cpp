@@ -264,7 +264,7 @@ void iV_PolyLine(const std::vector<Vector3i> &points, const glm::mat4 &mvp, PIEL
 		lastPoint = result;
 	}
 
-	iV_Lines(lines, WZCOL_TEAM2);
+	iV_Lines(lines, colour);
 }
 
 /**
