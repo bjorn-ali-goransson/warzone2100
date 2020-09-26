@@ -1709,10 +1709,19 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 	for (auto deltaX = -6; deltaX <= 6; deltaX++)
 	{
+		const auto x = playerXTile + deltaX;
+
+		if(x < 0){
+			continue;
+		}
+		
 		for (auto deltaZ = -6; deltaZ <= 6; deltaZ++)
 		{
-			const auto x = playerXTile + deltaX;
 			const auto z = playerZTile + deltaZ;
+
+			if(z < 0){
+				continue;
+			}
 
 			const float XA = world_coord(x);
 			const float XB = world_coord(x + 1);
@@ -1721,27 +1730,23 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			
 			float height = map_TileHeight(x, z);
 
-			Vector2i aa, ab, ba, bb;
-			const auto AA = Vector3i(XA, height + 10, -ZA);
-			const auto AB = Vector3i(XA, height + 10, -ZB);
-			const auto BA = Vector3i(XB, height + 10, -ZA);
-			const auto BB = Vector3i(XB, height + 10, -ZB);
-			pie_RotateProject(&AA, mvp, &aa);
-			pie_RotateProject(&AB, mvp, &ab);
-			pie_RotateProject(&BA, mvp, &ba);
-			pie_RotateProject(&BB, mvp, &bb);
+			iV_PolyLine({
+				{ XA, height, -ZA },
+				{ XA, height, -ZB },
+				{ XB, height, -ZB },
+				{ XB, height, -ZA },
+				{ XA, height, -ZA },
+			}, mvp, WZCOL_TEAM2);
 
-			iV_Lines({
-				{ aa.x, aa.y, ab.x, ab.y },
-				{ aa.x, aa.y, ba.x, ba.y },
-				{ bb.x, bb.y, ab.x, ab.y },
-				{ bb.x, bb.y, ba.x, ba.y },
-			}, WZCOL_TEAM2);
+			const Vector3i a = { (XA + XB) / 2, height, -(ZA + ZB) / 2 };
+			Vector2i b;
+
+			pie_RotateProject(&a, mvp, &b);
 
 			const unsigned int sectorId = Sector::getIdByCoords({x, z});
 			auto sector = groundSectors[sectorId].get();
 			WzText costText(std::to_string(sector->getTile({x, z}).cost), font_medium);
-			costText.render((aa.x + bb.x) / 2, (aa.y + bb.y) / 2, WZCOL_TEXT_BRIGHT);
+			costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
 	 	}
 	}
 
