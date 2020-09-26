@@ -1714,18 +1714,18 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			const auto x = playerXTile + deltaX;
 			const auto z = playerZTile + deltaZ;
 
-			const float X1 = world_coord(x);
-			const float X2 = world_coord(x + 1);
-			const float Z1 = world_coord(z);
-			const float Z2 = world_coord(z + 1);
+			const float XA = world_coord(x);
+			const float XB = world_coord(x + 1);
+			const float ZA = world_coord(z);
+			const float ZB = world_coord(z + 1);
 			
 			float height = map_TileHeight(x, z);
 
 			Vector2i aa, ab, ba, bb;
-			const auto AA = Vector3i(X1, height + 10, -Z1);
-			const auto AB = Vector3i(X1, height + 10, -Z2);
-			const auto BA = Vector3i(X2, height + 10, -Z1);
-			const auto BB = Vector3i(X2, height + 10, -Z2);
+			const auto AA = Vector3i(XA, height + 10, -ZA);
+			const auto AB = Vector3i(XA, height + 10, -ZB);
+			const auto BA = Vector3i(XB, height + 10, -ZA);
+			const auto BB = Vector3i(XB, height + 10, -ZB);
 			pie_RotateProject(&AA, mvp, &aa);
 			pie_RotateProject(&AB, mvp, &ab);
 			pie_RotateProject(&BA, mvp, &ba);
