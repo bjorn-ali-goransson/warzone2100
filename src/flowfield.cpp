@@ -429,26 +429,6 @@ std::vector<ComparableVector2i> toComparableVectors(std::vector<Vector2i> values
 	return result;
 }
 
-void debugDrawFlowfields(const glm::mat4 &mvp) {
-	if (!isFlowfieldEnabled()) return;
-
-	if (COST_FIELD_DEBUG) {
-		//debugDrawCostField();
-	}
-
-	if (PORTALS_DEBUG) {
-		debugDrawPortals();
-	}
-
-	if (PORTAL_PATH_DEBUG) {
-		debugDrawPortalPath();
-	}
-
-	if (VECTOR_FIELD_DEBUG) {
-		debugDrawFlowfield(mvp);
-	}
-}
-
 // If the path finding system is shutdown or not
 static volatile bool ffpathQuit = false;
 
@@ -1313,6 +1293,57 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 	return portals;
 }
 
+Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned otherAxis1, unsigned otherAxis2,
+							bool isXAxis, AbstractSector& thisSector, AbstractSector& otherSector, unsigned int& axisEndOut)
+{
+	axisEndOut = 0;
+	std::vector<Vector2i> firstSectorPoints;
+	std::vector<Vector2i> secondSectorPoints;
+	Vector2i firstSectorPoint;
+	Vector2i secondSectorPoint;
+
+	for (unsigned int axis = axisStart; axis < axisEnd; axis++)
+	{
+		if (isXAxis)
+		{
+			firstSectorPoint = Vector2i { axis, otherAxis1 };
+			secondSectorPoint = Vector2i { axis, otherAxis2 };
+		}
+		else
+		{
+			firstSectorPoint = Vector2i { otherAxis1, axis };
+			secondSectorPoint = Vector2i { otherAxis2, axis };
+		}
+
+		bool thisPassable = !thisSector.getTile(firstSectorPoint).isBlocking();
+		bool otherPassable = !otherSector.getTile(secondSectorPoint).isBlocking();
+
+		if (thisPassable && otherPassable)
+		{
+			firstSectorPoints.push_back(firstSectorPoint);
+			secondSectorPoints.push_back(secondSectorPoint);
+			axisEndOut = axis;
+		}
+		else if (!firstSectorPoints.empty())
+		{
+			// Not passable, but we found some points - that means we reached end of portal (subsequent calls to this function will do the rest)
+			break;
+		}
+	}
+
+	if (!firstSectorPoints.empty())
+	{
+		std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
+		std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
+		return Portal(&thisSector, &otherSector, a, b);
+	}
+	else
+	{
+		// Invalid portal
+		return Portal();
+	}
+}
+
 void destroyCostFields()
 {
 	for (auto& sectors : costFields)
@@ -1365,57 +1396,6 @@ Tile createTile(Vector2i p, PROPULSION_TYPE propulsion)
 	Tile tile;
 	tile.cost = cost;
 	return tile;
-}
-
-Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned otherAxis1, unsigned otherAxis2,
-							bool isXAxis, AbstractSector& thisSector, AbstractSector& otherSector, unsigned int& axisEndOut)
-{
-	axisEndOut = 0;
-	std::vector<Vector2i> firstSectorPoints;
-	std::vector<Vector2i> secondSectorPoints;
-	Vector2i firstSectorPoint;
-	Vector2i secondSectorPoint;
-
-	for (unsigned int axis = axisStart; axis < axisEnd; axis++)
-	{
-		if (isXAxis)
-		{
-			firstSectorPoint = Vector2i { axis, otherAxis1 };
-			secondSectorPoint = Vector2i { axis, otherAxis2 };
-		}
-		else
-		{
-			firstSectorPoint = Vector2i { otherAxis1, axis };
-			secondSectorPoint = Vector2i { otherAxis2, axis };
-		}
-
-		bool thisPassable = !thisSector.getTile(firstSectorPoint).isBlocking();
-		bool otherPassable = !otherSector.getTile(secondSectorPoint).isBlocking();
-
-		if (thisPassable && otherPassable)
-		{
-			firstSectorPoints.push_back(firstSectorPoint);
-			secondSectorPoints.push_back(secondSectorPoint);
-			axisEndOut = axis;
-		}
-		else if (!firstSectorPoints.empty())
-		{
-			// Not passable, but we found some points - that means we reached end of portal
-			break;
-		}
-	}
-
-	if (!firstSectorPoints.empty())
-	{
-		std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
-		std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
-		return Portal(&thisSector, &otherSector, a, b);
-	}
-	else
-	{
-		// Invalid portal
-		return Portal();
-	}
 }
 
 void connectPortals(portalMapT& portalMap, sectorListT& sectors)
@@ -1577,6 +1557,22 @@ std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned 
 	return coordsPath;
 }
 
+void debugDrawFlowfields(const glm::mat4 &mvp) {
+	if (!isFlowfieldEnabled()) return;
+
+	if (PORTALS_DEBUG) {
+		debugDrawPortals();
+	}
+
+	if (PORTAL_PATH_DEBUG) {
+		debugDrawPortalPath();
+	}
+
+	if (VECTOR_FIELD_DEBUG) {
+		debugDrawFlowfield(mvp);
+	}
+}
+
 void debugDrawPortals()
 {
 	const int playerXTile = map_coord(player.p.x);
@@ -1692,17 +1688,58 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 			if(x % SECTOR_SIZE == 0){
 				iV_PolyLine({
-					{ (XA + XB) / 2, height, -ZA },
-					{ (XA + XB) / 2, height, -ZB },
+					{ XA + (XB + XA) / 10, height, -ZA },
+					{ XA + (XB + XA) / 10, height, -ZB },
 				}, mvp, WZCOL_WHITE);
 			}
 
 			if(z % SECTOR_SIZE == 0){
 				iV_PolyLine({
-					{ XA, height, -(ZA + ZB) / 2 },
-					{ XB, height, -(ZA + ZB) / 2 },
+					{ XA, height, -(ZA + (ZB - ZA) / 10) },
+					{ XB, height, -(ZA + (ZB - ZA) / 10) },
 				}, mvp, WZCOL_WHITE);
 			}
+
+			// portals
+
+			auto sectorId = AbstractSector::getIdByCoords({x, z});
+			auto sector = groundSectors[sectorId].get();
+			if(sectorId == 0){
+				auto portals = sector->getPortals();
+				printf("Count for sector %i: %i\n", sectorId, (int)portals.size());
+				for(auto portalId : portals){
+					auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
+					auto portalA = portal->second.firstSectorPoints[0];
+					auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
+					portalA = Vector2i(world_coord(portalA.x), world_coord(portalA.y));
+					portalB = Vector2i(world_coord(portalB.x), world_coord(portalB.y));
+					auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
+					iV_PolyLine({
+						{ portalA.x, portalHeight + 10, -portalA.y },
+						{ portalA.x, portalHeight + 10, -portalB.y },
+						{ portalB.x, portalHeight + 10, -portalB.y },
+						{ portalB.x, portalHeight + 10, -portalA.y },
+						{ portalA.x, portalHeight + 10, -portalA.y },
+					}, mvp, WZCOL_TEAM1);
+				}
+			}
+
+			// auto&& portals = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
+
+			// for (auto&& portal : portals)
+			// {
+			// 	iV_Box(convertX(portal.second.getFirstSectorCenter().x), convertY(portal.second.getFirstSectorCenter().y),
+			// 			convertX(portal.second.getSecondSectorCenter().x + 1), convertY(portal.second.getSecondSectorCenter().y + 1), WZCOL_RED);
+
+			// 	// Connection with other portals
+			// 	for (unsigned int neighbor : portal.second.neighbors)
+			// 	{
+			// 		Portal& neighborPortal = portals[neighbor];
+			// 		iV_Line(convertX(portal.second.getFirstSectorCenter().x), convertY(portal.second.getFirstSectorCenter().y),
+			// 				convertX(neighborPortal.getSecondSectorCenter().x), convertY(neighborPortal.getSecondSectorCenter().y),
+			// 				WZCOL_YELLOW);
+			// 	}
+			// }
 
 			// cost
 
@@ -1710,9 +1747,6 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			Vector2i b;
 
 			pie_RotateProject(&a, mvp, &b);
-
-			const unsigned int sectorId = Sector::getIdByCoords({x, z});
-			auto sector = groundSectors[sectorId].get();
 			WzText costText(std::to_string(sector->getTile({x, z}).cost), font_medium);
 			costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
 	 	}

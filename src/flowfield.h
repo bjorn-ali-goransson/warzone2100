@@ -42,7 +42,6 @@
 constexpr const bool DEBUG_BUILD = true;
 
 // FEEL FREE TO DISABLE THOSE AS THEY OBSCURE THE VIEW
-constexpr const bool COST_FIELD_DEBUG = true;
 constexpr const bool PORTALS_DEBUG = true;
 constexpr const bool PORTAL_PATH_DEBUG = true;
 constexpr const bool VECTOR_FIELD_DEBUG = true;
