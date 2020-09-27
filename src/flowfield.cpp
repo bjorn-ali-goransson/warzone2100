@@ -1566,7 +1566,7 @@ void debugDrawFlowfields(const glm::mat4 &mvp) {
 }
 
 void debugDrawPortals()
-{
+{return;
 	const int playerXTile = map_coord(player.p.x);
 	const int playerZTile = map_coord(player.p.z);
 
@@ -1702,18 +1702,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				for(auto portalId : portals){
 					auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
 					auto portalA = portal->second.firstSectorPoints[0];
-					auto portalB = portal->second.firstSectorPoints[portal->second.firstSectorPoints.size() -1];
-					printf("Portal from (%i, %i) to (%i, %i)\n", portalA.x, portalA.y, portalB.x, portalB.y);
-					printf("Points for this sector:");
-					for(auto p : portal->second.firstSectorPoints){
-						printf("(%i, %i) ", p.x, p.y);
-					}
-					printf("\n");
-					printf("Points for other sector:");
-					for(auto p : portal->second.secondSectorPoints){
-						printf("(%i, %i) ", p.x, p.y);
-					}
-					printf("\n");
+					auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
+					
 					auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
 					portalA = Vector2i(world_coord(portalA.x), world_coord(portalA.y));
 					portalB = Vector2i(world_coord(portalB.x), world_coord(portalB.y));
