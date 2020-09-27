@@ -1312,30 +1312,30 @@ Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned
 			firstSectorPoint = Vector2i { otherAxis1, axis };
 			secondSectorPoint = Vector2i { otherAxis2, axis };
 		}
-		// printf("(%i, %i)\n", secondSectorPoint.x, secondSectorPoint.y);
-		// thisSector.getTile(firstSectorPoint);
-		otherSector.getTile(secondSectorPoint);
 
-		// if (thisPassable && otherPassable)
-		// {
-		// 	firstSectorPoints.push_back(firstSectorPoint);
-		// 	secondSectorPoints.push_back(secondSectorPoint);
-		// 	axisEndOut = axis;
-		// }
-		// else if (!firstSectorPoints.empty())
-		// {
-		// 	// Not passable, but we found some points - that means we reached end of portal (subsequent calls to this function will do the rest)
-		// 	break;
-		// }
+		bool thisPassable = !thisSector.getTile(firstSectorPoint).isBlocking();
+		bool otherPassable = !otherSector.getTile(secondSectorPoint).isBlocking();
+
+		if (thisPassable && otherPassable)
+		{
+			firstSectorPoints.push_back(firstSectorPoint);
+			secondSectorPoints.push_back(secondSectorPoint);
+			axisEndOut = axis;
+		}
+		else if (!firstSectorPoints.empty())
+		{
+			// Not passable, but we found some points - that means we reached end of portal (subsequent calls to this function will do the rest)
+			break;
+		}
 	}
 
-	// if (!firstSectorPoints.empty())
-	// {
-	// 	std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
-	// 	std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
-	// 	return Portal(&thisSector, &otherSector, a, b);
-	// }
-	// else
+	if (!firstSectorPoints.empty())
+	{
+		std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
+		std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
+		return Portal(&thisSector, &otherSector, a, b);
+	}
+	else
 	{
 		// Invalid portal
 		return Portal();
