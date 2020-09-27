@@ -18,6 +18,7 @@
 #include "lib/ivis_opengl/piematrix.h"
 
 #include "display3d.h"
+#include "display3ddef.h"
 #include "map.h"
 #include "lib/framework/wzapp.h"
 #include <glm/gtx/transform.hpp>
@@ -47,7 +48,7 @@ struct ComparableVector2i : Vector2i {
 };
 
 // Sector is a square with side length of SECTOR_SIZE. 
-constexpr const unsigned int SECTOR_SIZE = 4;
+constexpr const unsigned int SECTOR_SIZE = 10;
 
 constexpr const unsigned short NOT_PASSABLE = std::numeric_limits<unsigned short>::max();
 constexpr const unsigned short COST_MIN = 1;
@@ -1696,25 +1697,23 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 			auto sectorId = AbstractSector::getIdByCoords({x, z});
 			auto sector = groundSectors[sectorId].get();
-			if(sectorId == 0){
-				auto portals = sector->getPortals();
-				printf("Count for sector %i: %i\n", sectorId, (int)portals.size());
-				for(auto portalId : portals){
-					auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
-					auto portalA = portal->second.firstSectorPoints[0];
-					auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
-					
-					auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
-					portalA = Vector2i(world_coord(portalA.x), world_coord(portalA.y));
-					portalB = Vector2i(world_coord(portalB.x), world_coord(portalB.y));
-					iV_PolyLine({
-						{ portalA.x, portalHeight + 10, -portalA.y },
-						{ portalA.x, portalHeight + 10, -portalB.y },
-						{ portalB.x, portalHeight + 10, -portalB.y },
-						{ portalB.x, portalHeight + 10, -portalA.y },
-						{ portalA.x, portalHeight + 10, -portalA.y },
-					}, mvp, WZCOL_TEAM1);
-				}
+			auto portals = sector->getPortals();
+			
+			for(auto portalId : portals){
+				auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
+				auto portalA = portal->second.firstSectorPoints[0];
+				auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
+				
+				auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
+				portalA = Vector2i(world_coord(portalA.x) + TILE_WIDTH * 0.25, world_coord(portalA.y) + TILE_WIDTH * 0.25);
+				portalB = Vector2i(world_coord(portalB.x) + TILE_WIDTH * 0.75, world_coord(portalB.y) + TILE_WIDTH * 0.75);
+				iV_PolyLine({
+					{ portalA.x, portalHeight + 10, -portalA.y },
+					{ portalA.x, portalHeight + 10, -portalB.y },
+					{ portalB.x, portalHeight + 10, -portalB.y },
+					{ portalB.x, portalHeight + 10, -portalA.y },
+					{ portalA.x, portalHeight + 10, -portalA.y },
+				}, mvp, WZCOL_TEAM1);
 			}
 
 			// auto&& portals = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
