@@ -47,7 +47,7 @@ struct ComparableVector2i : Vector2i {
 };
 
 // Sector is a square with side length of SECTOR_SIZE. 
-constexpr const unsigned int SECTOR_SIZE = 16;
+constexpr const unsigned int SECTOR_SIZE = 4;
 
 constexpr const unsigned short NOT_PASSABLE = std::numeric_limits<unsigned short>::max();
 constexpr const unsigned short COST_MIN = 1;
@@ -106,7 +106,6 @@ public:
 	void addPortal(unsigned int portalId);
 	const std::vector<unsigned int>& getPortals() const;
 
-	static unsigned int getIdByCoords(Vector2i p, unsigned int mapWidth);
 	static unsigned int getIdByCoords(Vector2i p);
 	static Vector2i getTopLeftCorner(unsigned int id); // Top-left and bottom-right
 	static Vector2i getTopLeftCornerByCoords(Vector2i point); // Top-left and bottom-right
@@ -304,6 +303,12 @@ struct Node {
 	}
 };
 
+static int numSectorsHorizontal;
+static int numSectorsVertical;
+static int numSectors;
+static int numHorizontalTiles;
+static int numVerticalTiles;
+
 void initCostFields();
 void costFieldReplaceWithEmpty(sectorListT& sectors);
 void setupPortals();
@@ -388,6 +393,12 @@ bool isFlowfieldEnabled() {
 
 void flowfieldInit() {
 	if (!isFlowfieldEnabled()) return;
+
+	if(mapWidth == 0 || mapHeight == 0){
+		// called by both stageTwoInitialise() and stageThreeInitialise().
+		// in the case of both these being called, map will be unavailable the first time.
+		return;
+	}
 
 	initCostFields();
 	setupPortals();
@@ -638,29 +649,19 @@ Vector2i Portal::getSecondSectorCenter() const {
 	return secondSectorPoints[secondSectorPoints.size() / 2];
 }
 
-unsigned int AbstractSector::getIdByCoords(Vector2i p, unsigned int mapWidth)
+unsigned int AbstractSector::getIdByCoords(Vector2i p)
 {
 	const unsigned int xNumber = p.x / SECTOR_SIZE;
 	const unsigned int yNumber = p.y / SECTOR_SIZE;
-	const auto sectorsPerRow = mapWidth / SECTOR_SIZE;
-	const unsigned int sectorId = yNumber * sectorsPerRow + xNumber;
+	const unsigned int sectorId = yNumber * numSectorsHorizontal + xNumber;
 	
-	assert(sectorId < (mapWidth * mapHeight / (SECTOR_SIZE * SECTOR_SIZE)) && "Sector id too big");
-
 	return sectorId;
-}
-
-unsigned int AbstractSector::getIdByCoords(Vector2i p) {
-	return getIdByCoords(p, mapWidth);
 }
 
 Vector2i AbstractSector::getTopLeftCorner(unsigned int id)
 {
-	assert(id < (mapWidth * mapHeight / (SECTOR_SIZE * SECTOR_SIZE)) && "Sector id too big");
-
-	const auto sectorsPerRow = mapWidth / SECTOR_SIZE;
-	const unsigned int y = (id / sectorsPerRow) * SECTOR_SIZE;
-	const unsigned int x = (id % sectorsPerRow) * SECTOR_SIZE;
+	const unsigned int y = (id / numSectorsHorizontal) * SECTOR_SIZE;
+	const unsigned int x = (id % numSectorsHorizontal) * SECTOR_SIZE;
 	return Vector2i{x, y};
 }
 
@@ -670,8 +671,6 @@ Vector2i AbstractSector::getTopLeftCornerByCoords(Vector2i point) {
 }
 
 std::vector<unsigned int> AbstractSector::getNeighbors(const std::vector<std::unique_ptr<AbstractSector>>& sectors, Vector2i center) {
-	assert(center.x < mapWidth);
-	assert(center.y < mapHeight);
 	std::vector<unsigned int> neighbors;
 	const unsigned int sectorId = AbstractSector::getIdByCoords(center);
 
@@ -687,7 +686,7 @@ std::vector<unsigned int> AbstractSector::getNeighbors(const std::vector<std::un
 			const unsigned int targetSectorId = AbstractSector::getIdByCoords({realX, realY});
 			const bool isPassable = !sectors[targetSectorId]->getTile({realX, realY}).isBlocking();
 			if (sectorId == targetSectorId && isPassable) {
-				neighbors.push_back(realY * mapWidth + realX);
+				neighbors.push_back(realY * numHorizontalTiles + realX);
 			}
 		}
 	}
@@ -713,15 +712,11 @@ const std::vector<unsigned int>& AbstractSector::getPortals() const
 
 void Sector::setTile(Vector2i p, Tile tile)
 {
-	assert(p.x >= 0 && p.x < mapWidth);
-	assert(p.y >= 0 && p.y < mapHeight);
 	this->tiles[p.x % SECTOR_SIZE][p.y % SECTOR_SIZE] = tile;
 }
 
 Tile Sector::getTile(Vector2i p) const
 {
-	assert(p.x >= 0 && p.x < mapWidth);
-	assert(p.y >= 0 && p.y < mapHeight);
 	return this->tiles[p.x % SECTOR_SIZE][p.y % SECTOR_SIZE];
 }
 
@@ -850,14 +845,14 @@ void AbstractAStar::logDebugNodesStats(unsigned int nodesTotal, int nodesInPath)
 
 TileAStar::TileAStar(unsigned int goal, const sectorListT& sectors) : AbstractAStar(goal), sectors(sectors)
 {
-	assert(goal < mapWidth * mapHeight);
+	assert(goal < numHorizontalTiles * numVerticalTiles);
 	goalPoint = getPointByFlatIndex(goal);
 	sectorId = AbstractSector::getIdByCoords(goalPoint);
 }
 
 bool TileAStar::findPathExists(unsigned int startingIndex, unsigned int nodes)
 {
-	assert(startingIndex < mapWidth * mapHeight);
+	assert(startingIndex < numHorizontalTiles * numVerticalTiles);
 
 	unsigned int startSectorId = AbstractSector::getIdByCoords(getPointByFlatIndex(startingIndex));
 
@@ -870,7 +865,7 @@ bool TileAStar::findPathExists(unsigned int startingIndex, unsigned int nodes)
 
 std::vector<unsigned int> TileAStar::getNeighbors(unsigned int index)
 {
-	assert(index < mapWidth * mapHeight);
+	assert(index < numHorizontalTiles * numVerticalTiles);
 	const Vector2i currentPoint = getPointByFlatIndex(index);
 
 	return AbstractSector::getNeighbors(sectors, currentPoint);
@@ -878,8 +873,8 @@ std::vector<unsigned int> TileAStar::getNeighbors(unsigned int index)
 
 unsigned int TileAStar::distance(unsigned int current, unsigned int neighbor)
 {
-	assert(current < mapWidth * mapHeight);
-	assert(neighbor < mapWidth * mapHeight);
+	assert(current < numHorizontalTiles * numVerticalTiles);
+	assert(neighbor < numHorizontalTiles * numVerticalTiles);
 	const Vector2i currentPoint = getPointByFlatIndex(current);
 	const Vector2i neighborPoint = getPointByFlatIndex(neighbor);
 
@@ -888,7 +883,7 @@ unsigned int TileAStar::distance(unsigned int current, unsigned int neighbor)
 
 unsigned int TileAStar::heuristic(unsigned int start)
 {
-	assert(start < mapWidth * mapHeight);
+	assert(start < numHorizontalTiles * numVerticalTiles);
 	const Vector2i startPoint = getPointByFlatIndex(start);
 	const unsigned int cost = sectors[sectorId]->getTile(startPoint).cost;
 	return distanceCommon(startPoint, goalPoint, cost);
@@ -1165,11 +1160,11 @@ unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned
 
 void initCostFields()
 {
-	// Assume map is already loaded. Access globals
-	assert(mapWidth % SECTOR_SIZE == 0);
-	assert(mapHeight % SECTOR_SIZE == 0);
-
-	const int numSectors = (mapWidth / SECTOR_SIZE) * (mapHeight / SECTOR_SIZE);
+	numSectorsHorizontal = ceil(mapWidth * 1.f / SECTOR_SIZE);
+	numSectorsVertical = ceil(mapHeight * 1.f / SECTOR_SIZE);
+	numSectors = numSectorsHorizontal * numSectorsVertical;
+	
+	printf("number of sectors: (%i, %i) \n", numSectorsHorizontal, numSectorsVertical);
 
 	// Reserve and fill cost fields with empty sectors
 	for (auto& sectors : costFields)
@@ -1181,10 +1176,15 @@ void initCostFields()
 		}
 	}
 
+	numHorizontalTiles = numSectorsHorizontal * SECTOR_SIZE;
+	numVerticalTiles = numSectorsVertical * SECTOR_SIZE;
+	
+	printf("number of tiles: (%i, %i) - really (%i, %i) \n", numHorizontalTiles, numVerticalTiles, mapWidth, mapHeight);
+
 	// Fill tiles in sectors
-	for (int x = 0; x < mapWidth; x++)
+	for (int x = 0; x < numHorizontalTiles; x++)
 	{
-		for (int y = 0; y < mapHeight; y++)
+		for (int y = 0; y < numVerticalTiles; y++)
 		{
 			Vector2i p = {x, y};
 			const unsigned int sectorId = Sector::getIdByCoords(p);
@@ -1230,9 +1230,7 @@ void setupPortals()
 portalMapT setupPortalsForSectors(sectorListT& sectors)
 {
 	portalMapT portals;
-	const auto sectorsPerRow = mapWidth / SECTOR_SIZE;
-	const auto lastRow = sectors.size() - sectorsPerRow;
-
+	const auto lastRow = sectors.size() - numSectorsHorizontal;
 	const auto portalAppender = [&](Portal& portalByAxis, AbstractSector& thisSector, AbstractSector& otherSector)
 	{
 		if (portalByAxis.isValid())
@@ -1256,7 +1254,7 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 			unsigned int x = corner.x;
 			do
 			{
-				AbstractSector& otherSector = *sectors[i + sectorsPerRow];
+				AbstractSector& otherSector = *sectors[i + numSectorsHorizontal];
 				Portal portalByAxis = detectPortalByAxis(x, corner.x + SECTOR_SIZE, corner.y + SECTOR_SIZE - 1, corner.y + SECTOR_SIZE, true,
 															thisSector, otherSector, x);
 				portalAppender(portalByAxis, thisSector, otherSector);
@@ -1270,7 +1268,7 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 		}
 
 		// Right. Skip last column
-		if (i % sectorsPerRow != sectorsPerRow - 1)
+		if (i % numSectorsHorizontal != numSectorsHorizontal - 1)
 		{
 			unsigned short failsafeCounter = 0;
 			unsigned int y = corner.y;
@@ -1314,30 +1312,30 @@ Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned
 			firstSectorPoint = Vector2i { otherAxis1, axis };
 			secondSectorPoint = Vector2i { otherAxis2, axis };
 		}
+		// printf("(%i, %i)\n", secondSectorPoint.x, secondSectorPoint.y);
+		// thisSector.getTile(firstSectorPoint);
+		otherSector.getTile(secondSectorPoint);
 
-		bool thisPassable = !thisSector.getTile(firstSectorPoint).isBlocking();
-		bool otherPassable = !otherSector.getTile(secondSectorPoint).isBlocking();
-
-		if (thisPassable && otherPassable)
-		{
-			firstSectorPoints.push_back(firstSectorPoint);
-			secondSectorPoints.push_back(secondSectorPoint);
-			axisEndOut = axis;
-		}
-		else if (!firstSectorPoints.empty())
-		{
-			// Not passable, but we found some points - that means we reached end of portal (subsequent calls to this function will do the rest)
-			break;
-		}
+		// if (thisPassable && otherPassable)
+		// {
+		// 	firstSectorPoints.push_back(firstSectorPoint);
+		// 	secondSectorPoints.push_back(secondSectorPoint);
+		// 	axisEndOut = axis;
+		// }
+		// else if (!firstSectorPoints.empty())
+		// {
+		// 	// Not passable, but we found some points - that means we reached end of portal (subsequent calls to this function will do the rest)
+		// 	break;
+		// }
 	}
 
-	if (!firstSectorPoints.empty())
-	{
-		std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
-		std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
-		return Portal(&thisSector, &otherSector, a, b);
-	}
-	else
+	// if (!firstSectorPoints.empty())
+	// {
+	// 	std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
+	// 	std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
+	// 	return Portal(&thisSector, &otherSector, a, b);
+	// }
+	// else
 	{
 		// Invalid portal
 		return Portal();
@@ -1369,8 +1367,6 @@ void destroyFlowfieldCache() {
 
 Tile createTile(Vector2i p, PROPULSION_TYPE propulsion)
 {
-	assert(p.x > 0 && p.x < mapWidth);
-	assert(p.y > 0 && p.y < mapHeight);
 	unsigned short cost = NOT_PASSABLE;
 	const bool isBlocking = fpathBlockingTile(p.x, p.y, propulsion);
 
@@ -1420,13 +1416,12 @@ void connectPortals(portalMapT& portalMap, sectorListT& sectors)
 }
 
 unsigned int pointToIndex(Vector2i p) {
-	return p.y * mapWidth + p.x;
+	return p.y * numHorizontalTiles + p.x;
 }
 
 Vector2i getPointByFlatIndex(unsigned int index) {
-	assert(index < mapWidth * mapHeight);
-	const unsigned int y = index / mapWidth;
-	const unsigned int x = index % mapWidth;
+	const unsigned int y = index / numHorizontalTiles;
+	const unsigned int x = index % numHorizontalTiles;
 	return Vector2i { x, y };
 }
 
@@ -1444,10 +1439,7 @@ void connectPotentialNeighbor(std::pair<const unsigned int, Portal>& portalWithI
 			portalMap[potentialNeighbor].neighbors.push_back(portalWithIndex.first);
 		}
 
-		// We actually don't need "mapWidth * mapHeight" nodes, only SECTOR_SIZE^2, but we use absolute index for tiles
-		// It's not much anyways, since it's only used for vector<bool>, which is usually compressed.
-		// Worst case: 256^2 =~ 65KB in uncompressed mode, 256^2 / 8 =~ 8KB in compressed mode.
-		unsigned int nodes = mapWidth * mapHeight;
+		unsigned int nodes = numHorizontalTiles * numVerticalTiles;
 
 		Vector2i potentialNeighborPointFirst = portalMap[potentialNeighbor].getFirstSectorCenter();
 		Vector2i potentialNeighborPointSecond = portalMap[potentialNeighbor].getSecondSectorCenter();
@@ -1682,21 +1674,21 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				{ XB, height, -ZB },
 				{ XB, height, -ZA },
 				{ XA, height, -ZA },
-			}, mvp, WZCOL_TEAM2);
+			}, mvp, WZCOL_GREY);
 
 			// sector
 
 			if(x % SECTOR_SIZE == 0){
 				iV_PolyLine({
-					{ XA + (XB + XA) / 10, height, -ZA },
-					{ XA + (XB + XA) / 10, height, -ZB },
+					{ XA + 5, height, -ZA },
+					{ XA + 5, height, -ZB },
 				}, mvp, WZCOL_WHITE);
 			}
 
 			if(z % SECTOR_SIZE == 0){
 				iV_PolyLine({
-					{ XA, height, -(ZA + (ZB - ZA) / 10) },
-					{ XB, height, -(ZA + (ZB - ZA) / 10) },
+					{ XA, height, -(ZA + 5)},
+					{ XB, height, -(ZA + 5)},
 				}, mvp, WZCOL_WHITE);
 			}
 
@@ -1710,7 +1702,18 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				for(auto portalId : portals){
 					auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
 					auto portalA = portal->second.firstSectorPoints[0];
-					auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
+					auto portalB = portal->second.firstSectorPoints[portal->second.firstSectorPoints.size() -1];
+					printf("Portal from (%i, %i) to (%i, %i)\n", portalA.x, portalA.y, portalB.x, portalB.y);
+					printf("Points for this sector:");
+					for(auto p : portal->second.firstSectorPoints){
+						printf("(%i, %i) ", p.x, p.y);
+					}
+					printf("\n");
+					printf("Points for other sector:");
+					for(auto p : portal->second.secondSectorPoints){
+						printf("(%i, %i) ", p.x, p.y);
+					}
+					printf("\n");
 					auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
 					portalA = Vector2i(world_coord(portalA.x), world_coord(portalA.y));
 					portalB = Vector2i(world_coord(portalB.x), world_coord(portalB.y));
@@ -1747,8 +1750,11 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			Vector2i b;
 
 			pie_RotateProject(&a, mvp, &b);
-			WzText costText(std::to_string(sector->getTile({x, z}).cost), font_medium);
-			costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
+			auto cost = sector->getTile({x, z}).cost;
+			if(cost != NOT_PASSABLE){
+				WzText costText(std::to_string(cost), font_medium);
+				costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
+			}
 	 	}
 	}
 
