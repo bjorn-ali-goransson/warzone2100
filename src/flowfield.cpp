@@ -1711,9 +1711,9 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 					auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
 					auto portalA = portal->second.firstSectorPoints[0];
 					auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
+					auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
 					portalA = Vector2i(world_coord(portalA.x), world_coord(portalA.y));
 					portalB = Vector2i(world_coord(portalB.x), world_coord(portalB.y));
-					auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
 					iV_PolyLine({
 						{ portalA.x, portalHeight + 10, -portalA.y },
 						{ portalA.x, portalHeight + 10, -portalB.y },
