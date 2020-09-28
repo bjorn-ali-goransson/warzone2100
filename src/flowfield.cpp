@@ -1232,16 +1232,6 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 {
 	portalMapT portals;
 	const auto lastRow = sectors.size() - numSectorsHorizontal;
-	const auto portalAppender = [&](Portal& portalByAxis, AbstractSector& thisSector, AbstractSector& otherSector)
-	{
-		if (portalByAxis.isValid())
-		{
-			auto index = static_cast<unsigned int>(portals.size());
-			portals[index] = std::move(portalByAxis);
-			thisSector.addPortal(index);
-			otherSector.addPortal(index);
-		}
-	};
 
 	for (unsigned int i = 0; i < sectors.size(); i++)
 	{
@@ -1258,7 +1248,13 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 				AbstractSector& otherSector = *sectors[i + numSectorsHorizontal];
 				Portal portalByAxis = detectPortalByAxis(x, corner.x + SECTOR_SIZE, corner.y + SECTOR_SIZE - 1, corner.y + SECTOR_SIZE, true,
 															thisSector, otherSector, x);
-				portalAppender(portalByAxis, thisSector, otherSector);
+				if (portalByAxis.isValid())
+				{
+					auto index = static_cast<unsigned int>(portals.size());
+					portals[index] = std::move(portalByAxis);
+					thisSector.addPortal(index);
+					otherSector.addPortal(index);
+				}
 				x++;
 				failsafeCounter++; // In case of bug, prevent infinite loop
 				if (!portalByAxis.isValid())
@@ -1278,7 +1274,13 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 				AbstractSector& otherSector = *sectors[i + 1];
 				Portal portalByAxis = detectPortalByAxis(y, corner.y + SECTOR_SIZE, corner.x + SECTOR_SIZE - 1, corner.x + SECTOR_SIZE, false,
 															thisSector, otherSector, y);
-				portalAppender(portalByAxis, thisSector, otherSector);
+				if (portalByAxis.isValid())
+				{
+					auto index = static_cast<unsigned int>(portals.size());
+					portals[index] = std::move(portalByAxis);
+					thisSector.addPortal(index);
+					otherSector.addPortal(index);
+				}
 				y++;
 				failsafeCounter++; // In case of bug, prevent infinite loop
 				if (!portalByAxis.isValid())
@@ -1713,25 +1715,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 					{ portalB.x, portalHeight + 10, -portalB.y },
 					{ portalB.x, portalHeight + 10, -portalA.y },
 					{ portalA.x, portalHeight + 10, -portalA.y },
-				}, mvp, WZCOL_TEAM1);
+				}, mvp, WZCOL_YELLOW);
 			}
-
-			// auto&& portals = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
-
-			// for (auto&& portal : portals)
-			// {
-			// 	iV_Box(convertX(portal.second.getFirstSectorCenter().x), convertY(portal.second.getFirstSectorCenter().y),
-			// 			convertX(portal.second.getSecondSectorCenter().x + 1), convertY(portal.second.getSecondSectorCenter().y + 1), WZCOL_RED);
-
-			// 	// Connection with other portals
-			// 	for (unsigned int neighbor : portal.second.neighbors)
-			// 	{
-			// 		Portal& neighborPortal = portals[neighbor];
-			// 		iV_Line(convertX(portal.second.getFirstSectorCenter().x), convertY(portal.second.getFirstSectorCenter().y),
-			// 				convertX(neighborPortal.getSecondSectorCenter().x), convertY(neighborPortal.getSecondSectorCenter().y),
-			// 				WZCOL_YELLOW);
-			// 	}
-			// }
 
 			// cost
 
