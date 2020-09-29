@@ -376,7 +376,6 @@ constexpr const unsigned int DEBUG_DRAW_X_DELTA = 7;
 // +- y axis tile debug draw
 constexpr const unsigned int DEBUG_DRAW_Y_DELTA = 6;
 
-void debugDrawPortals();
 void debugDrawPortalPath();
 
 void debugDrawFlowfields(const glm::mat4 &mvp);
@@ -1519,49 +1518,12 @@ std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned 
 void debugDrawFlowfields(const glm::mat4 &mvp) {
 	if (!isFlowfieldEnabled()) return;
 
-	if (PORTALS_DEBUG) {
-		debugDrawPortals();
-	}
-
 	if (PORTAL_PATH_DEBUG) {
 		debugDrawPortalPath();
 	}
 
 	if (VECTOR_FIELD_DEBUG) {
 		debugDrawFlowfield(mvp);
-	}
-}
-
-void debugDrawPortals()
-{return;
-	const int playerXTile = map_coord(player.p.x);
-	const int playerZTile = map_coord(player.p.z);
-
-	const auto convertX = [=](const unsigned int x)
-	{
-		return 40 + ((x + (DEBUG_DRAW_X_DELTA - playerXTile)) << 6);
-	};
-
-	const auto convertY = [=](const unsigned int y)
-	{
-		return 10 + ((y + (DEBUG_DRAW_Y_DELTA - playerZTile)) << 6);
-	};
-
-	auto&& portals = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
-
-	for (auto&& portal : portals)
-	{
-		iV_Box(convertX(portal.second.getFirstSectorCenter().x), convertY(portal.second.getFirstSectorCenter().y),
-				convertX(portal.second.getSecondSectorCenter().x + 1), convertY(portal.second.getSecondSectorCenter().y + 1), WZCOL_RED);
-
-		// Connection with other portals
-		for (unsigned int neighbor : portal.second.neighbors)
-		{
-			Portal& neighborPortal = portals[neighbor];
-			iV_Line(convertX(portal.second.getFirstSectorCenter().x), convertY(portal.second.getFirstSectorCenter().y),
-					convertX(neighborPortal.getSecondSectorCenter().x), convertY(neighborPortal.getSecondSectorCenter().y),
-					WZCOL_YELLOW);
-		}
 	}
 }
 
