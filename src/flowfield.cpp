@@ -31,6 +31,7 @@
 #include "lib/ivis_opengl/pieclip.h"
 
 struct ComparableVector2i : Vector2i {
+	ComparableVector2i(int x, int y) : Vector2i(x, y) {}
 	ComparableVector2i(Vector2i value) : Vector2i(value) {}
 
 	inline bool operator<(const ComparableVector2i& b) const {
@@ -92,6 +93,7 @@ struct Tile {
 class AbstractSector {
 public:
 	typedef std::array<std::array<Tile, SECTOR_SIZE>, SECTOR_SIZE> tileArrayT;
+	Vector2i position;
 
 	AbstractSector() = default;
 	AbstractSector& operator=(AbstractSector&) = delete;
@@ -100,6 +102,7 @@ public:
 	AbstractSector(AbstractSector&&) = delete;
 	virtual ~AbstractSector() = default;
 
+	virtual bool isBlocking(int x, int y) = 0;
 	virtual void setTile(Vector2i p, Tile tile) = 0;
 	virtual Tile getTile(Vector2i p) const = 0;
 	virtual bool checkIsEmpty() const = 0; // Actual iterating through tiles
@@ -120,23 +123,35 @@ class Sector : public AbstractSector {
 public:
 	using AbstractSector::AbstractSector;
 
-	void setTile(Vector2i p, Tile tile) override;
-	Tile getTile(Vector2i p) const override;
+	bool isBlocking(int x, int y) {
+		return this->tiles[x % SECTOR_SIZE][y % SECTOR_SIZE].cost == NOT_PASSABLE;
+	}
+	void setTile(Vector2i p, Tile tile)
+	{
+		this->tiles[p.x % SECTOR_SIZE][p.y % SECTOR_SIZE] = tile;
+	}
+	Tile getTile(Vector2i p) const
+	{
+		return this->tiles[p.x % SECTOR_SIZE][p.y % SECTOR_SIZE];
+	}
 	bool checkIsEmpty() const override;
 
 private:
 	tileArrayT tiles;
 };
 
+constexpr const Tile emptyTile;
+
 // Empty sector - optimization. Functions in this sector should always return COST_MIN.
 class EmptySector : public AbstractSector {
 public:
 	using AbstractSector::AbstractSector;
 
-	void setTile(Vector2i p, Tile tile) override;
-	Tile getTile(Vector2i p) const override;
-	bool checkIsEmpty() const override;
-	bool isEmpty() const override;
+	bool isBlocking(int x, int y) { return false; }
+	void setTile(Vector2i p, Tile tile) { }
+	Tile getTile(Vector2i p) const { return emptyTile; }
+	bool checkIsEmpty() const { return true; }
+	bool isEmpty() const { return true; }
 
 private:
 	std::array<std::array<Tile, 0>, 0> tiles {};
@@ -616,8 +631,6 @@ std::array<std::unique_ptr<flowfieldCacheT>, 4> flowfieldCache {
 	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT())
 };
 
-constexpr const Tile emptyTile;
-
 unsigned int _debugTotalSectors = 0;
 unsigned int _debugEmptySectors = 0;
 
@@ -711,16 +724,6 @@ const std::vector<unsigned int>& AbstractSector::getPortals() const
 	return portalIds;
 }
 
-void Sector::setTile(Vector2i p, Tile tile)
-{
-	this->tiles[p.x % SECTOR_SIZE][p.y % SECTOR_SIZE] = tile;
-}
-
-Tile Sector::getTile(Vector2i p) const
-{
-	return this->tiles[p.x % SECTOR_SIZE][p.y % SECTOR_SIZE];
-}
-
 bool Sector::checkIsEmpty() const
 {
 	for (auto&& row : this->tiles)
@@ -731,26 +734,6 @@ bool Sector::checkIsEmpty() const
 		}
 	}
 
-	return true;
-}
-
-void EmptySector::setTile(Vector2i p, Tile tile)
-{
-	// No-op - sector is already empty
-}
-
-Tile EmptySector::getTile(Vector2i p) const
-{
-	return emptyTile;
-}
-
-bool EmptySector::checkIsEmpty() const
-{
-	return true;
-}
-
-bool EmptySector::isEmpty() const
-{
 	return true;
 }
 
@@ -1165,23 +1148,23 @@ void initCostFields()
 	numSectorsVertical = ceil(mapHeight * 1.f / SECTOR_SIZE);
 	numSectors = numSectorsHorizontal * numSectorsVertical;
 	
-	printf("number of sectors: (%i, %i) \n", numSectorsHorizontal, numSectorsVertical);
-
 	// Reserve and fill cost fields with empty sectors
 	for (auto& sectors : costFields)
 	{
 		sectors.reserve(numSectors);
-		for (int i = 0; i < numSectors; i++)
-		{
-			sectors.push_back(std::unique_ptr<Sector>(new Sector()));
+
+		for(auto y = 0; y < numSectorsVertical; y++){
+			for(auto x = 0; x < numSectorsHorizontal; x++){
+				auto sector = new Sector();
+				sector->position = { x * SECTOR_SIZE, y * SECTOR_SIZE };
+				sectors.push_back(std::unique_ptr<Sector>(sector));
+			}
 		}
 	}
 
 	numHorizontalTiles = numSectorsHorizontal * SECTOR_SIZE;
 	numVerticalTiles = numSectorsVertical * SECTOR_SIZE;
 	
-	printf("number of tiles: (%i, %i) - really (%i, %i) \n", numHorizontalTiles, numVerticalTiles, mapWidth, mapHeight);
-
 	// Fill tiles in sectors
 	for (int x = 0; x < numHorizontalTiles; x++)
 	{
@@ -1212,7 +1195,9 @@ void costFieldReplaceWithEmpty(sectorListT& sectors)
 	{
 		if (sector->checkIsEmpty())
 		{
-			sector = std::unique_ptr<EmptySector>(new EmptySector());
+			auto empty = new EmptySector();
+			empty->position = sector->position;
+			sector = std::unique_ptr<EmptySector>(empty);
 			_debugEmptySectors++;
 		}
 	}
@@ -1228,10 +1213,64 @@ void setupPortals()
 	}
 }
 
+std::vector<Portal*> detect_horizontal_portals(AbstractSector& sector, AbstractSector& belowSector){
+	std::vector<Portal*> result;
+
+	if(sector.position.x != 0 || sector.position.y != 0){
+		return result;
+	}
+
+	bool currentlyOnPortal = false;
+	std::vector<ComparableVector2i> sectorPortalPoints;
+	std::vector<ComparableVector2i> belowSectorPortalPoints;
+
+	for(auto x = 0; x < SECTOR_SIZE; x++){
+		if(sector.isBlocking(x, SECTOR_SIZE - 1) || belowSector.isBlocking(x, 0)){
+			if(currentlyOnPortal){
+				result.push_back(new Portal(&sector, &belowSector, sectorPortalPoints, belowSectorPortalPoints));
+				currentlyOnPortal = false;
+				sectorPortalPoints = std::vector<ComparableVector2i>();
+				belowSectorPortalPoints = std::vector<ComparableVector2i>();
+			}
+			continue;
+		}
+
+		currentlyOnPortal = true;
+		sectorPortalPoints.push_back(ComparableVector2i(sector.position.x + x, sector.position.y + SECTOR_SIZE - 1));
+		belowSectorPortalPoints.push_back(ComparableVector2i(belowSector.position.x + x, belowSector.position.y));
+	}
+
+	if(currentlyOnPortal){
+		result.push_back(new Portal(&sector, &belowSector, sectorPortalPoints, belowSectorPortalPoints));
+	}
+
+	return result;
+}
+
 portalMapT setupPortalsForSectors(sectorListT& sectors)
 {
 	portalMapT portals;
-	const auto lastRow = sectors.size() - numSectorsHorizontal;
+
+	for(auto y = 0; y < numSectorsVertical; y++){
+		for(auto x = 0; x < numSectorsHorizontal; x++){
+			auto i = y * numSectorsHorizontal + x;
+			auto& sector = *sectors[i];
+
+			if(y < numSectorsVertical - 1){
+				auto& belowSector = *sectors[i + numSectorsHorizontal];
+				auto horizontal_portals = detect_horizontal_portals(sector, belowSector);
+				for(auto portal : horizontal_portals){
+					auto index = static_cast<unsigned int>(portals.size());
+					portals[index] = std::move(*portal);
+					sector.addPortal(index);
+					belowSector.addPortal(index);
+				}
+			}
+		}
+	}
+
+
+	// const auto lastRow = sectors.size() - numSectorsHorizontal;
 
 	for (unsigned int i = 0; i < sectors.size(); i++)
 	{
@@ -1239,30 +1278,30 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 		AbstractSector& thisSector = *sectors[i];
 
 		// Bottom. Skip last row
-		if (i < lastRow)
-		{
-			unsigned short failsafeCounter = 0;
-			unsigned int x = corner.x;
-			do
-			{
-				AbstractSector& otherSector = *sectors[i + numSectorsHorizontal];
-				Portal portalByAxis = detectPortalByAxis(x, corner.x + SECTOR_SIZE, corner.y + SECTOR_SIZE - 1, corner.y + SECTOR_SIZE, true,
-															thisSector, otherSector, x);
-				if (portalByAxis.isValid())
-				{
-					auto index = static_cast<unsigned int>(portals.size());
-					portals[index] = std::move(portalByAxis);
-					thisSector.addPortal(index);
-					otherSector.addPortal(index);
-				}
-				x++;
-				failsafeCounter++; // In case of bug, prevent infinite loop
-				if (!portalByAxis.isValid())
-				{
-					break;
-				}
-			} while (failsafeCounter < SECTOR_SIZE); // There could be more than one portal
-		}
+		// if (i < lastRow)
+		// {
+		// 	unsigned short failsafeCounter = 0;
+		// 	unsigned int x = corner.x;
+		// 	do
+		// 	{
+		// 		AbstractSector& otherSector = *sectors[i + numSectorsHorizontal];
+		// 		Portal portalByAxis = detectPortalByAxis(x, corner.x + SECTOR_SIZE, corner.y + SECTOR_SIZE - 1, corner.y + SECTOR_SIZE, true,
+		// 													thisSector, otherSector, x);
+		// 		if (portalByAxis.isValid())
+		// 		{
+		// 			auto index = static_cast<unsigned int>(portals.size());
+		// 			portals[index] = std::move(portalByAxis);
+		// 			thisSector.addPortal(index);
+		// 			otherSector.addPortal(index);
+		// 		}
+		// 		x++;
+		// 		failsafeCounter++; // In case of bug, prevent infinite loop
+		// 		if (!portalByAxis.isValid())
+		// 		{
+		// 			break;
+		// 		}
+		// 	} while (failsafeCounter < SECTOR_SIZE); // There could be more than one portal
+		// }
 
 		// Right. Skip last column
 		if (i % numSectorsHorizontal != numSectorsHorizontal - 1)
