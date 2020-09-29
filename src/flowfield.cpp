@@ -1216,10 +1216,6 @@ void setupPortals()
 std::vector<Portal*> detect_horizontal_portals(AbstractSector& sector, AbstractSector& belowSector){
 	std::vector<Portal*> result;
 
-	if(sector.position.x != 0 || sector.position.y != 0){
-		return result;
-	}
-
 	bool currentlyOnPortal = false;
 	std::vector<ComparableVector2i> sectorPortalPoints;
 	std::vector<ComparableVector2i> belowSectorPortalPoints;
@@ -1247,6 +1243,36 @@ std::vector<Portal*> detect_horizontal_portals(AbstractSector& sector, AbstractS
 	return result;
 }
 
+std::vector<Portal*> detect_vertical_portals(AbstractSector& sector, AbstractSector& rightSector){
+	std::vector<Portal*> result;
+
+	bool currentlyOnPortal = false;
+	std::vector<ComparableVector2i> sectorPortalPoints;
+	std::vector<ComparableVector2i> rightSectorPortalPoints;
+
+	for(auto y = 0; y < SECTOR_SIZE; y++){
+		if(sector.isBlocking(SECTOR_SIZE - 1, y) || rightSector.isBlocking(0, y)){
+			if(currentlyOnPortal){
+				result.push_back(new Portal(&sector, &rightSector, sectorPortalPoints, rightSectorPortalPoints));
+				currentlyOnPortal = false;
+				sectorPortalPoints = std::vector<ComparableVector2i>();
+				rightSectorPortalPoints = std::vector<ComparableVector2i>();
+			}
+			continue;
+		}
+
+		currentlyOnPortal = true;
+		sectorPortalPoints.push_back(ComparableVector2i(sector.position.x + SECTOR_SIZE - 1, sector.position.y + y));
+		rightSectorPortalPoints.push_back(ComparableVector2i(rightSector.position.x, rightSector.position.y + y));
+	}
+
+	if(currentlyOnPortal){
+		result.push_back(new Portal(&sector, &rightSector, sectorPortalPoints, rightSectorPortalPoints));
+	}
+
+	return result;
+}
+
 portalMapT setupPortalsForSectors(sectorListT& sectors)
 {
 	portalMapT portals;
@@ -1266,122 +1292,21 @@ portalMapT setupPortalsForSectors(sectorListT& sectors)
 					belowSector.addPortal(index);
 				}
 			}
-		}
-	}
 
-
-	// const auto lastRow = sectors.size() - numSectorsHorizontal;
-
-	for (unsigned int i = 0; i < sectors.size(); i++)
-	{
-		const auto corner = AbstractSector::getTopLeftCorner(i);
-		AbstractSector& thisSector = *sectors[i];
-
-		// Bottom. Skip last row
-		// if (i < lastRow)
-		// {
-		// 	unsigned short failsafeCounter = 0;
-		// 	unsigned int x = corner.x;
-		// 	do
-		// 	{
-		// 		AbstractSector& otherSector = *sectors[i + numSectorsHorizontal];
-		// 		Portal portalByAxis = detectPortalByAxis(x, corner.x + SECTOR_SIZE, corner.y + SECTOR_SIZE - 1, corner.y + SECTOR_SIZE, true,
-		// 													thisSector, otherSector, x);
-		// 		if (portalByAxis.isValid())
-		// 		{
-		// 			auto index = static_cast<unsigned int>(portals.size());
-		// 			portals[index] = std::move(portalByAxis);
-		// 			thisSector.addPortal(index);
-		// 			otherSector.addPortal(index);
-		// 		}
-		// 		x++;
-		// 		failsafeCounter++; // In case of bug, prevent infinite loop
-		// 		if (!portalByAxis.isValid())
-		// 		{
-		// 			break;
-		// 		}
-		// 	} while (failsafeCounter < SECTOR_SIZE); // There could be more than one portal
-		// }
-
-		// Right. Skip last column
-		if (i % numSectorsHorizontal != numSectorsHorizontal - 1)
-		{
-			unsigned short failsafeCounter = 0;
-			unsigned int y = corner.y;
-			do
-			{
-				AbstractSector& otherSector = *sectors[i + 1];
-				Portal portalByAxis = detectPortalByAxis(y, corner.y + SECTOR_SIZE, corner.x + SECTOR_SIZE - 1, corner.x + SECTOR_SIZE, false,
-															thisSector, otherSector, y);
-				if (portalByAxis.isValid())
-				{
+			if(i % numSectorsHorizontal != numSectorsHorizontal - 1){
+				auto& rightSector = *sectors[i + 1];
+				auto vertical_portals = detect_vertical_portals(sector, rightSector);
+				for(auto portal : vertical_portals){
 					auto index = static_cast<unsigned int>(portals.size());
-					portals[index] = std::move(portalByAxis);
-					thisSector.addPortal(index);
-					otherSector.addPortal(index);
+					portals[index] = std::move(*portal);
+					sector.addPortal(index);
+					rightSector.addPortal(index);
 				}
-				y++;
-				failsafeCounter++; // In case of bug, prevent infinite loop
-				if (!portalByAxis.isValid())
-				{
-					break;
-				}
-			} while (failsafeCounter < SECTOR_SIZE); // There could be more than one portal
+			}
 		}
 	}
 
 	return portals;
-}
-
-Portal detectPortalByAxis(unsigned int axisStart, unsigned int axisEnd, unsigned otherAxis1, unsigned otherAxis2,
-							bool isXAxis, AbstractSector& thisSector, AbstractSector& otherSector, unsigned int& axisEndOut)
-{
-	axisEndOut = 0;
-	std::vector<Vector2i> firstSectorPoints;
-	std::vector<Vector2i> secondSectorPoints;
-	Vector2i firstSectorPoint;
-	Vector2i secondSectorPoint;
-
-	for (unsigned int axis = axisStart; axis < axisEnd; axis++)
-	{
-		if (isXAxis)
-		{
-			firstSectorPoint = Vector2i { axis, otherAxis1 };
-			secondSectorPoint = Vector2i { axis, otherAxis2 };
-		}
-		else
-		{
-			firstSectorPoint = Vector2i { otherAxis1, axis };
-			secondSectorPoint = Vector2i { otherAxis2, axis };
-		}
-
-		bool thisPassable = !thisSector.getTile(firstSectorPoint).isBlocking();
-		bool otherPassable = !otherSector.getTile(secondSectorPoint).isBlocking();
-
-		if (thisPassable && otherPassable)
-		{
-			firstSectorPoints.push_back(firstSectorPoint);
-			secondSectorPoints.push_back(secondSectorPoint);
-			axisEndOut = axis;
-		}
-		else if (!firstSectorPoints.empty())
-		{
-			// Not passable, but we found some points - that means we reached end of portal (subsequent calls to this function will do the rest)
-			break;
-		}
-	}
-
-	if (!firstSectorPoints.empty())
-	{
-		std::vector<ComparableVector2i> a = toComparableVectors(firstSectorPoints);
-		std::vector<ComparableVector2i> b = toComparableVectors(secondSectorPoints);
-		return Portal(&thisSector, &otherSector, a, b);
-	}
-	else
-	{
-		// Invalid portal
-		return Portal();
-	}
 }
 
 void destroyCostFields()
