@@ -478,7 +478,7 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 	job.mapSource = source;
 	job.mapGoal = goal;
 	job.propulsion = propulsionType;
-printf("From (%i, %i) to (%i, %i) thru %i\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, propulsionType);
+
 	aStarJob task([job]() { return aStarJobExecute(job); });
 
 	// Add to end of list
@@ -1611,7 +1611,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	// flowfields
 
 	auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
-printf("Tile %i, %i\n", SECTOR_TILE_SIZE, SECTOR_TILE_SIZE);
+
 	for (auto const& cacheEntry: *cache) {
 		auto sector = groundSectors[cacheEntry.second->sectorId].get();
 		
