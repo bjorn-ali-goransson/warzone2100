@@ -49,7 +49,7 @@ struct ComparableVector2i : Vector2i {
 
 // Sector is a square with side length of SECTOR_SIZE. 
 constexpr const unsigned int SECTOR_SIZE = 10;
-constexpr const unsigned int TILE_SIZE = 128;
+#define SECTOR_TILE_SIZE 128
 
 constexpr const unsigned short NOT_PASSABLE = std::numeric_limits<unsigned short>::max();
 constexpr const unsigned short COST_MIN = 1;
@@ -1583,8 +1583,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
 				
 				auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
-				portalA = Vector2i(world_coord(portalA.x) + TILE_SIZE * 0.25, world_coord(portalA.y) + TILE_SIZE * 0.25);
-				portalB = Vector2i(world_coord(portalB.x) + TILE_SIZE * 0.75, world_coord(portalB.y) + TILE_SIZE * 0.75);
+				portalA = Vector2i(world_coord(portalA.x) + SECTOR_TILE_SIZE * 0.25, world_coord(portalA.y) + SECTOR_TILE_SIZE * 0.25);
+				portalB = Vector2i(world_coord(portalB.x) + SECTOR_TILE_SIZE * 0.75, world_coord(portalB.y) + SECTOR_TILE_SIZE * 0.75);
 				iV_PolyLine({
 					{ portalA.x, portalHeight + 10, -portalA.y },
 					{ portalA.x, portalHeight + 10, -portalB.y },
@@ -1611,7 +1611,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	// flowfields
 
 	auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
-
+printf("Tile %i, %i\n", SECTOR_TILE_SIZE, SECTOR_TILE_SIZE);
 	for (auto const& cacheEntry: *cache) {
 		auto sector = groundSectors[cacheEntry.second->sectorId].get();
 		
@@ -1620,8 +1620,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			for (int x = 0; x < SECTOR_SIZE; x++) {
 				auto vector = flowfield->getVector({x, y});
 				
-				auto startPointX = world_coord(sector->position.x + x) + TILE_SIZE / 2;
-				auto startPointY = world_coord(sector->position.y + y) + TILE_SIZE / 2;
+				auto startPointX = world_coord(sector->position.x + x) + SECTOR_TILE_SIZE / 2;
+				auto startPointY = world_coord(sector->position.y + y) + SECTOR_TILE_SIZE / 2;
 
 				auto portalHeight = map_TileHeight(startPointX, startPointY);
 				iV_PolyLine({
@@ -1640,8 +1640,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 		}
 		
 		for (auto&& goal : cacheEntry.first) {
-			auto goalX = world_coord(goal.x) + TILE_SIZE / 2;
-			auto goalY = world_coord(goal.y) + TILE_SIZE / 2;
+			auto goalX = world_coord(goal.x) + SECTOR_TILE_SIZE / 2;
+			auto goalY = world_coord(goal.y) + SECTOR_TILE_SIZE / 2;
 			auto portalHeight = map_TileHeight(goalX, goalY);
 			iV_PolyLine({
 				{ goalX - 10, portalHeight + 10, -goalY - 10 },
