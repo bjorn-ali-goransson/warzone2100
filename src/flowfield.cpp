@@ -1609,6 +1609,71 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	 	}
 	}
 
+	//
+
+	auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
+
+	printf("Start iterating through cache\n");
+	for (auto const& cacheEntry: *cache) {
+		printf("Cache entry\n");
+
+		if(cacheEntry.second == nullptr){
+
+		}
+		
+		auto key = cacheEntry.first;
+
+		for (auto&& goal : key) {
+			auto goalX = world_coord(goal.x) + TILE_WIDTH / 2;
+			auto goalY = world_coord(goal.y) + TILE_HEIGHT / 2;
+			printf("Goal: %i, %i\n", goalX, goalY);
+			auto portalHeight = map_TileHeight(goalX, goalY);
+			iV_PolyLine({
+				{ goalX - 10, portalHeight + 10, -goalY - 10 },
+				{ goalX - 10, portalHeight + 10, -goalY + 10 },
+				{ goalX + 10, portalHeight + 10, -goalY + 10 },
+				{ goalX + 10, portalHeight + 10, -goalY - 10 },
+				{ goalX - 10, portalHeight + 10, -goalY - 10 },
+			}, mvp, WZCOL_RED);
+		}
+		
+		// int goalX = key[0].x;
+		// int goalY = key[0].y;
+		// bool onScreen = (std::abs(playerXTile - goalX) < SECTOR_SIZE * 2) && (std::abs(playerZTile - goalY) < SECTOR_SIZE * 2);
+
+		// if (onScreen) {
+		// 	Vector2i tlCorner = AbstractSector::getTopLeftCornerByCoords(key[0]);
+
+			// Draw goals
+
+		// 	// Draw vectors
+		// 	auto& sector = cacheEntry.second;
+		// 	for (int y = 0; y < SECTOR_SIZE; y++) {
+		// 		for (int x = 0; x < SECTOR_SIZE; x++) {
+		// 			auto vector = sector->getVector({x, y});
+		// 			const int absoluteX = tlCorner.x + x;
+		// 			const int absoluteY = tlCorner.y + y;
+
+		// 			// Vector direction
+		// 			iV_Line(convertX(absoluteX), convertY(absoluteY),
+		// 					convertX(absoluteX) + vector.x * std::pow(2, 4), convertY(absoluteY) + vector.y * std::pow(2, 4),
+		// 					WZCOL_TEAM2);
+
+		// 			// Vector start point
+		// 			iV_ShadowBox(convertX(absoluteX) - 2, convertY(absoluteY) - 2,
+		// 							convertX(absoluteX) + 2, convertY(absoluteY) + 2,
+		// 							0, WZCOL_TEAM7, WZCOL_TEAM7, WZCOL_TEAM7);
+		// 		}
+		// 	}
+		// }
+	}
+	printf("End iterating through cache\n");
+
+
+
+
+
+
 
 
 	// auto&& portals = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
@@ -1628,61 +1693,5 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	// 			WZCOL_GREEN);
 
 	// 	previousPortal = &currentPortal;
-	// }
-
-	//
-
-	// const auto convertX = [=](const unsigned int x) {
-	// 	return 60 + ((x + (DEBUG_DRAW_X_DELTA - playerXTile)) << 6);
-	// };
-
-	// const auto convertY = [=](const unsigned int y) {
-	// 	return 30 + ((y + (DEBUG_DRAW_Y_DELTA - playerZTile)) << 6);
-	// };
-
-	// // It is only debug. If lock happens not to be available, skip drawing
-	// std::unique_lock<std::mutex> lock(flowfieldMutex, std::try_to_lock);
-	// if (lock) {
-	// 	auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
-
-	// 	for (auto const& cacheEntry: *cache) {
-	// 		auto key = cacheEntry.first;
-	// 		int goalX = key[0].x;
-	// 		int goalY = key[0].y;
-	// 		bool onScreen = (std::abs(playerXTile - goalX) < SECTOR_SIZE * 2) && (std::abs(playerZTile - goalY) < SECTOR_SIZE * 2);
-
-	// 		if (onScreen) {
-	// 			Vector2i tlCorner = AbstractSector::getTopLeftCornerByCoords(key[0]);
-
-	// 			// Draw goals
-	// 			for (auto&& goal : key) {
-	// 				iV_Box(convertX(goal.x) - 5, convertY(goal.y) - 5,
-	// 						convertX(goal.x) + 5, convertY(goal.y) + 5,
-	// 						WZCOL_TEAM7);
-	// 			}
-
-	// 			// Draw vectors
-	// 			auto& sector = cacheEntry.second;
-	// 			for (int y = 0; y < SECTOR_SIZE; y++) {
-	// 				for (int x = 0; x < SECTOR_SIZE; x++) {
-	// 					auto vector = sector->getVector({x, y});
-	// 					const int absoluteX = tlCorner.x + x;
-	// 					const int absoluteY = tlCorner.y + y;
-
-	// 					// Vector direction
-	// 					iV_Line(convertX(absoluteX), convertY(absoluteY),
-	// 							convertX(absoluteX) + vector.x * std::pow(2, 4), convertY(absoluteY) + vector.y * std::pow(2, 4),
-	// 							WZCOL_TEAM2);
-
-	// 					// Vector start point
-	// 					iV_ShadowBox(convertX(absoluteX) - 2, convertY(absoluteY) - 2,
-	// 									convertX(absoluteX) + 2, convertY(absoluteY) + 2,
-	// 									0, WZCOL_TEAM7, WZCOL_TEAM7, WZCOL_TEAM7);
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-
-	// 	lock.unlock();
 	// }
 }
