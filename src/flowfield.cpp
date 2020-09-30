@@ -291,19 +291,25 @@ struct VectorT {
 	}
 };
 
-class FlowfieldSector final {
+class Flowfield final {
 public:
 	typedef std::array<std::array<VectorT, SECTOR_SIZE>, SECTOR_SIZE> vectorArrayT;
 
-	FlowfieldSector() = default;
-	FlowfieldSector& operator=(FlowfieldSector&) = delete;
-	FlowfieldSector& operator=(FlowfieldSector&&) = delete;
-	FlowfieldSector(FlowfieldSector&) = delete;
-	FlowfieldSector(FlowfieldSector&&) = default;
-	~FlowfieldSector() = default;
+	unsigned int sectorId;
 
-	void setVector(Vector2i p, VectorT vector);
-	VectorT getVector(Vector2i p) const;
+	Flowfield() = default;
+	Flowfield& operator=(Flowfield&) = delete;
+	Flowfield& operator=(Flowfield&&) = delete;
+	Flowfield(Flowfield&) = delete;
+	Flowfield(Flowfield&&) = default;
+	~Flowfield() = default;
+
+	void setVector(Vector2i p, VectorT vector) {
+		vectors[p.x][p.y] = vector;
+	}
+	VectorT getVector(Vector2i p) const {
+		return vectors[p.x][p.y];
+	}
 
 private:
 	vectorArrayT vectors;
@@ -605,7 +611,7 @@ std::mutex flowfieldMutex;
 
 // Caches
 typedef std::map<std::pair<unsigned int, unsigned int>, std::deque<unsigned int>> portalPathCacheT;
-typedef std::map<std::vector<ComparableVector2i>, std::unique_ptr<FlowfieldSector>> flowfieldCacheT;
+typedef std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>> flowfieldCacheT;
 
 // Workaround because QCache is neitVector2iher copyable nor movable
 std::array<std::unique_ptr<portalPathCacheT>, 4> portalPathCache {
@@ -966,14 +972,6 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 	}
 }
 
-void FlowfieldSector::setVector(Vector2i p, VectorT vector) {
-	vectors[p.x][p.y] = vector;
-}
-
-VectorT FlowfieldSector::getVector(Vector2i p) const {
-	return vectors[p.x][p.y];
-}
-
 void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
 unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
 
@@ -1005,11 +1003,12 @@ void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 
 void calculateIntegrationField(const std::vector<ComparableVector2i>& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
-void calculateFlowfield(FlowfieldSector* flowField, Sector* integrationField);
+void calculateFlowfield(Flowfield* flowField, Sector* integrationField);
 
 void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
-	FlowfieldSector* flowField = new FlowfieldSector();
+	Flowfield* flowField = new Flowfield();
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
+	flowField->sectorId = sectorId;
 	auto& sector = sectors[sectorId];
 
 	// NOTE: Vector field for given might have been calculated by the time this task have chance to run.
@@ -1023,7 +1022,7 @@ void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
 		auto cache = flowfieldCache[propulsionToIndex.at(propulsion)].get();
-		cache->insert(std::make_pair(goals, std::unique_ptr<FlowfieldSector>(flowField)));
+		cache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
 	}
 }
 
@@ -1082,7 +1081,7 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorLi
 	}
 }
 
-void calculateFlowfield(FlowfieldSector* flowField, Sector* integrationField) {
+void calculateFlowfield(Flowfield* flowField, Sector* integrationField) {
 	for (int y = 0; y < SECTOR_SIZE; y++) {
 		for (int x = 0; x < SECTOR_SIZE; x++) {
 			Vector2i p = {x, y};
@@ -1609,24 +1608,40 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	 	}
 	}
 
-	//
+	// flowfields
 
 	auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
 
-	printf("Start iterating through cache\n");
 	for (auto const& cacheEntry: *cache) {
-		printf("Cache entry\n");
+		auto sector = groundSectors[cacheEntry.second->sectorId].get();
+		
+		auto& flowfield = cacheEntry.second;
+		for (int y = 0; y < SECTOR_SIZE; y++) {
+			for (int x = 0; x < SECTOR_SIZE; x++) {
+				auto vector = flowfield->getVector({x, y});
+				
+				auto startPointX = world_coord(sector->position.x + x) + TILE_WIDTH / 2;
+				auto startPointY = world_coord(sector->position.y + y) + TILE_HEIGHT / 2;
 
-		if(cacheEntry.second == nullptr){
+				auto portalHeight = map_TileHeight(startPointX, startPointY);
+				iV_PolyLine({
+					{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
+					{ startPointX - 10, portalHeight + 10, -startPointY + 10 },
+					{ startPointX + 10, portalHeight + 10, -startPointY + 10 },
+					{ startPointX + 10, portalHeight + 10, -startPointY - 10 },
+					{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
+				}, mvp, WZCOL_WHITE);
 
+				iV_PolyLine({
+					{ startPointX, portalHeight + 10, -startPointY },
+					{ startPointX + vector.x * 75, portalHeight + 10, -startPointY - vector.y * 75 },
+				}, mvp, WZCOL_WHITE);
+			}
 		}
 		
-		auto key = cacheEntry.first;
-
-		for (auto&& goal : key) {
+		for (auto&& goal : cacheEntry.first) {
 			auto goalX = world_coord(goal.x) + TILE_WIDTH / 2;
 			auto goalY = world_coord(goal.y) + TILE_HEIGHT / 2;
-			printf("Goal: %i, %i\n", goalX, goalY);
 			auto portalHeight = map_TileHeight(goalX, goalY);
 			iV_PolyLine({
 				{ goalX - 10, portalHeight + 10, -goalY - 10 },
@@ -1634,40 +1649,9 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				{ goalX + 10, portalHeight + 10, -goalY + 10 },
 				{ goalX + 10, portalHeight + 10, -goalY - 10 },
 				{ goalX - 10, portalHeight + 10, -goalY - 10 },
-			}, mvp, WZCOL_RED);
+			}, mvp, WZCOL_YELLOW);
 		}
-		
-		// int goalX = key[0].x;
-		// int goalY = key[0].y;
-		// bool onScreen = (std::abs(playerXTile - goalX) < SECTOR_SIZE * 2) && (std::abs(playerZTile - goalY) < SECTOR_SIZE * 2);
-
-		// if (onScreen) {
-		// 	Vector2i tlCorner = AbstractSector::getTopLeftCornerByCoords(key[0]);
-
-			// Draw goals
-
-		// 	// Draw vectors
-		// 	auto& sector = cacheEntry.second;
-		// 	for (int y = 0; y < SECTOR_SIZE; y++) {
-		// 		for (int x = 0; x < SECTOR_SIZE; x++) {
-		// 			auto vector = sector->getVector({x, y});
-		// 			const int absoluteX = tlCorner.x + x;
-		// 			const int absoluteY = tlCorner.y + y;
-
-		// 			// Vector direction
-		// 			iV_Line(convertX(absoluteX), convertY(absoluteY),
-		// 					convertX(absoluteX) + vector.x * std::pow(2, 4), convertY(absoluteY) + vector.y * std::pow(2, 4),
-		// 					WZCOL_TEAM2);
-
-		// 			// Vector start point
-		// 			iV_ShadowBox(convertX(absoluteX) - 2, convertY(absoluteY) - 2,
-		// 							convertX(absoluteX) + 2, convertY(absoluteY) + 2,
-		// 							0, WZCOL_TEAM7, WZCOL_TEAM7, WZCOL_TEAM7);
-		// 		}
-		// 	}
-		// }
 	}
-	printf("End iterating through cache\n");
 
 
 
