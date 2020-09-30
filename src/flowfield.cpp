@@ -370,14 +370,6 @@ Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, 
 
 std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion);
 
-//////////////////////////////////////////////////////////////////////////////////////////
-// +- x axis tile debug draw. Smaller values = less tiles drawn. "7" somewhat fits the default window resolution
-constexpr const unsigned int DEBUG_DRAW_X_DELTA = 7;
-// +- y axis tile debug draw
-constexpr const unsigned int DEBUG_DRAW_Y_DELTA = 6;
-
-void debugDrawPortalPath();
-
 void debugDrawFlowfields(const glm::mat4 &mvp);
 void debugDrawFlowfield(const glm::mat4 &mvp);
 
@@ -1518,49 +1510,8 @@ std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned 
 void debugDrawFlowfields(const glm::mat4 &mvp) {
 	if (!isFlowfieldEnabled()) return;
 
-	if (PORTAL_PATH_DEBUG) {
-		debugDrawPortalPath();
-	}
-
 	if (VECTOR_FIELD_DEBUG) {
 		debugDrawFlowfield(mvp);
-	}
-}
-
-void debugDrawPortalPath() {
-	const int playerXTile = map_coord(player.p.x);
-	const int playerZTile = map_coord(player.p.z);
-
-	const auto convertX = [=](const unsigned int x) {
-		return 40 + ((x + (DEBUG_DRAW_X_DELTA - playerXTile)) << 6);
-	};
-
-	const auto convertY = [=](const unsigned int y) {
-		return 10 + ((y + (DEBUG_DRAW_Y_DELTA - playerZTile)) << 6);
-	};
-
-	auto&& portals = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
-
-	// It is only debug. If lock happens not to be available, skip drawing
-	std::unique_lock<std::mutex> lock(portalPathMutex, std::try_to_lock);
-	if (lock) {
-		Portal* previousPortal = nullptr;
-		for (auto it = _debugPortalPath.begin(); it != _debugPortalPath.end(); it++) {
-			auto& currentPortal = portals[*it];
-
-			if (previousPortal != nullptr) {
-				iV_Line(convertX(previousPortal->getSecondSectorCenter().x), convertY(previousPortal->getSecondSectorCenter().y),
-						convertX(currentPortal.getFirstSectorCenter().x), convertY(currentPortal.getFirstSectorCenter().y),
-						WZCOL_GREEN);
-			}
-
-			iV_Line(convertX(currentPortal.getFirstSectorCenter().x), convertY(currentPortal.getFirstSectorCenter().y),
-					convertX(currentPortal.getSecondSectorCenter().x), convertY(currentPortal.getSecondSectorCenter().y),
-					WZCOL_GREEN);
-
-			previousPortal = &currentPortal;
-		}
-		lock.unlock();
 	}
 }
 
@@ -1659,57 +1610,79 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	}
 
 
-	const auto convertX = [=](const unsigned int x) {
-		return 60 + ((x + (DEBUG_DRAW_X_DELTA - playerXTile)) << 6);
-	};
 
-	const auto convertY = [=](const unsigned int y) {
-		return 30 + ((y + (DEBUG_DRAW_Y_DELTA - playerZTile)) << 6);
-	};
+	// auto&& portals = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
 
-	// It is only debug. If lock happens not to be available, skip drawing
-	std::unique_lock<std::mutex> lock(flowfieldMutex, std::try_to_lock);
-	if (lock) {
-		auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
+	// Portal* previousPortal = nullptr;
+	// for (auto it = _debugPortalPath.begin(); it != _debugPortalPath.end(); it++) {
+	// 	auto& currentPortal = portals[*it];
 
-		for (auto const& cacheEntry: *cache) {
-			auto key = cacheEntry.first;
-			int goalX = key[0].x;
-			int goalY = key[0].y;
-			bool onScreen = (std::abs(playerXTile - goalX) < SECTOR_SIZE * 2) && (std::abs(playerZTile - goalY) < SECTOR_SIZE * 2);
+	// 	if (previousPortal != nullptr) {
+	// 		iV_Line(convertX(previousPortal->getSecondSectorCenter().x), convertY(previousPortal->getSecondSectorCenter().y),
+	// 				convertX(currentPortal.getFirstSectorCenter().x), convertY(currentPortal.getFirstSectorCenter().y),
+	// 				WZCOL_GREEN);
+	// 	}
 
-			if (onScreen) {
-				Vector2i tlCorner = AbstractSector::getTopLeftCornerByCoords(key[0]);
+	// 	iV_Line(convertX(currentPortal.getFirstSectorCenter().x), convertY(currentPortal.getFirstSectorCenter().y),
+	// 			convertX(currentPortal.getSecondSectorCenter().x), convertY(currentPortal.getSecondSectorCenter().y),
+	// 			WZCOL_GREEN);
 
-				// Draw goals
-				for (auto&& goal : key) {
-					iV_Box(convertX(goal.x) - 5, convertY(goal.y) - 5,
-							convertX(goal.x) + 5, convertY(goal.y) + 5,
-							WZCOL_TEAM7);
-				}
+	// 	previousPortal = &currentPortal;
+	// }
 
-				// Draw vectors
-				auto& sector = cacheEntry.second;
-				for (int y = 0; y < SECTOR_SIZE; y++) {
-					for (int x = 0; x < SECTOR_SIZE; x++) {
-						auto vector = sector->getVector({x, y});
-						const int absoluteX = tlCorner.x + x;
-						const int absoluteY = tlCorner.y + y;
+	//
 
-						// Vector direction
-						iV_Line(convertX(absoluteX), convertY(absoluteY),
-								convertX(absoluteX) + vector.x * std::pow(2, 4), convertY(absoluteY) + vector.y * std::pow(2, 4),
-								WZCOL_TEAM2);
+	// const auto convertX = [=](const unsigned int x) {
+	// 	return 60 + ((x + (DEBUG_DRAW_X_DELTA - playerXTile)) << 6);
+	// };
 
-						// Vector start point
-						iV_ShadowBox(convertX(absoluteX) - 2, convertY(absoluteY) - 2,
-										convertX(absoluteX) + 2, convertY(absoluteY) + 2,
-										0, WZCOL_TEAM7, WZCOL_TEAM7, WZCOL_TEAM7);
-					}
-				}
-			}
-		}
+	// const auto convertY = [=](const unsigned int y) {
+	// 	return 30 + ((y + (DEBUG_DRAW_Y_DELTA - playerZTile)) << 6);
+	// };
 
-		lock.unlock();
-	}
+	// // It is only debug. If lock happens not to be available, skip drawing
+	// std::unique_lock<std::mutex> lock(flowfieldMutex, std::try_to_lock);
+	// if (lock) {
+	// 	auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
+
+	// 	for (auto const& cacheEntry: *cache) {
+	// 		auto key = cacheEntry.first;
+	// 		int goalX = key[0].x;
+	// 		int goalY = key[0].y;
+	// 		bool onScreen = (std::abs(playerXTile - goalX) < SECTOR_SIZE * 2) && (std::abs(playerZTile - goalY) < SECTOR_SIZE * 2);
+
+	// 		if (onScreen) {
+	// 			Vector2i tlCorner = AbstractSector::getTopLeftCornerByCoords(key[0]);
+
+	// 			// Draw goals
+	// 			for (auto&& goal : key) {
+	// 				iV_Box(convertX(goal.x) - 5, convertY(goal.y) - 5,
+	// 						convertX(goal.x) + 5, convertY(goal.y) + 5,
+	// 						WZCOL_TEAM7);
+	// 			}
+
+	// 			// Draw vectors
+	// 			auto& sector = cacheEntry.second;
+	// 			for (int y = 0; y < SECTOR_SIZE; y++) {
+	// 				for (int x = 0; x < SECTOR_SIZE; x++) {
+	// 					auto vector = sector->getVector({x, y});
+	// 					const int absoluteX = tlCorner.x + x;
+	// 					const int absoluteY = tlCorner.y + y;
+
+	// 					// Vector direction
+	// 					iV_Line(convertX(absoluteX), convertY(absoluteY),
+	// 							convertX(absoluteX) + vector.x * std::pow(2, 4), convertY(absoluteY) + vector.y * std::pow(2, 4),
+	// 							WZCOL_TEAM2);
+
+	// 					// Vector start point
+	// 					iV_ShadowBox(convertX(absoluteX) - 2, convertY(absoluteY) - 2,
+	// 									convertX(absoluteX) + 2, convertY(absoluteY) + 2,
+	// 									0, WZCOL_TEAM7, WZCOL_TEAM7, WZCOL_TEAM7);
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+
+	// 	lock.unlock();
+	// }
 }
