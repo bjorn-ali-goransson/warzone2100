@@ -917,13 +917,6 @@ ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
-	if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
-	{
-		std::lock_guard<std::mutex> lock(logMutex);
-		debug(LOG_FLOWFIELD, "Path request calculation for start x: %d, y: %d, goal x: %d, y: %d, propulsion: %d\n",
-				job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, job.propulsion);
-	}
-
 	unsigned int sourcePortalId, goalPortalId;
 	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(job.mapSource, job.mapGoal, job.propulsion);
 
@@ -935,6 +928,14 @@ ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
 		_debugPortalPath = path;
 	}
 
+	printf("Starting process of job (%i, %i)-(%i, %i) %i-%i [%i]: ", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
+
+	for(auto p : path){
+		printf("%i, ", p);
+	}
+
+	printf("\n");
+
 	processFlowfields(job, path);
 
 	return job;
@@ -943,27 +944,21 @@ ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
 	std::unique_lock<std::mutex> lock(portalPathMutex);
 	auto& localPortalPathCache = *portalPathCache[propulsionToIndex.at(propulsion)];
-	std::deque<unsigned int>* pathPtr = &localPortalPathCache[{sourcePortalId, goalPortalId}];
-	if (pathPtr) {
-		if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
-		{
-			std::lock_guard<std::mutex> lock(logMutex);
-			debug(LOG_FLOWFIELD, "Flowfield portal cache hit\n");
-		}
 
-		return *pathPtr;
+	if (localPortalPathCache.count({sourcePortalId, goalPortalId}) > 0) {
+		return localPortalPathCache[{sourcePortalId, goalPortalId}];
 	} else {
 		lock.unlock();
-
-		if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
-		{
-			std::lock_guard<std::mutex> lock(portalPathMutex);
-			debug(LOG_FLOWFIELD, "Flowfield portal cache miss\n");
-		}
 
 		portalMapT& portals = portalArr[propulsionToIndex.at(propulsion)];
 		PortalAStar portalWalker(goalPortalId, portals);
 		std::deque<unsigned int> path = portalWalker.findPath(sourcePortalId, static_cast<unsigned int>(portals.size()));
+
+		printf("Found path[%i]: ", (int)path.size());
+		for(auto i : path){
+			printf("%i, ", i);
+		}
+		printf("\n");
 
 		lock.lock();
 		auto pathCopy = std::unique_ptr<std::deque<unsigned int>>(new std::deque<unsigned int>(path));
@@ -988,6 +983,7 @@ void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 		localStartPoint = goals[0];
 
 		if (localFlowfieldCache.count(goals) == 0) {
+			printf("Processing flowfield path segment\n");
 			processFlowfield(goals, portals, sectors, job.propulsion);
 		}
 	}
@@ -997,6 +993,7 @@ void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 	std::vector<ComparableVector2i> finalGoals { job.mapGoal };
 
 	if (localFlowfieldCache.count(finalGoals) == 0) {
+		printf("Processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 		processFlowfield(finalGoals, portals, sectors, job.propulsion);
 	}
 }
@@ -1008,6 +1005,7 @@ void calculateFlowfield(Flowfield* flowField, Sector* integrationField);
 void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
 	Flowfield* flowField = new Flowfield();
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
+	printf("Still processing flowfield (%i, %i)\n", goals[0].x, goals[0].y);
 	flowField->sectorId = sectorId;
 	auto& sector = sectors[sectorId];
 
@@ -1015,13 +1013,18 @@ void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals
 	// I don't care, since this task has proven to be short, and I want to avoid lock contention when checking cache
 
 	Sector* integrationField = new Sector();
+	printf("----start\n");
 	calculateIntegrationField(goals, sectors, sector.get(), integrationField);
+	printf("----end\n");
 
 	calculateFlowfield(flowField, integrationField);
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
 		auto cache = flowfieldCache[propulsionToIndex.at(propulsion)].get();
+
+		printf("Inserting (%i, %i)[+%i] into cache\n", goals[0].x, goals[0].y, (int)goals.size() - 1);
+
 		cache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
 	}
 }
@@ -1522,6 +1525,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	
 	const auto& groundSectors = costFields[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
 
+	std::map<unsigned int, bool> sectorsInView;
+
 	for (auto deltaX = -6; deltaX <= 6; deltaX++)
 	{
 		const auto x = playerXTile + deltaX;
@@ -1536,6 +1541,12 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 			if(z < 0){
 				continue;
+			}
+
+			auto sectorId = AbstractSector::getIdByCoords({x, z});
+			auto sector = groundSectors[sectorId].get();
+			if(!sectorsInView.count(sectorId)){
+				sectorsInView[sectorId] = true;
 			}
 
 			const float XA = world_coord(x);
@@ -1571,29 +1582,6 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				}, mvp, WZCOL_WHITE);
 			}
 
-			// portals
-
-			auto sectorId = AbstractSector::getIdByCoords({x, z});
-			auto sector = groundSectors[sectorId].get();
-			auto portals = sector->getPortals();
-			
-			for(auto portalId : portals){
-				auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
-				auto portalA = portal->second.firstSectorPoints[0];
-				auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
-				
-				auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
-				portalA = Vector2i(world_coord(portalA.x) + SECTOR_TILE_SIZE * 0.25, world_coord(portalA.y) + SECTOR_TILE_SIZE * 0.25);
-				portalB = Vector2i(world_coord(portalB.x) + SECTOR_TILE_SIZE * 0.75, world_coord(portalB.y) + SECTOR_TILE_SIZE * 0.75);
-				iV_PolyLine({
-					{ portalA.x, portalHeight + 10, -portalA.y },
-					{ portalA.x, portalHeight + 10, -portalB.y },
-					{ portalB.x, portalHeight + 10, -portalB.y },
-					{ portalB.x, portalHeight + 10, -portalA.y },
-					{ portalA.x, portalHeight + 10, -portalA.y },
-				}, mvp, WZCOL_YELLOW);
-			}
-
 			// cost
 
 			const Vector3i a = { (XA + XB) / 2, height, -(ZA + ZB) / 2 };
@@ -1606,6 +1594,44 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
 			}
 	 	}
+	}
+
+	for(auto sectorId : sectorsInView){
+		auto sector = groundSectors[sectorId.first].get();
+		auto portals = sector->getPortals();
+		
+		// sector ids
+
+		Vector3i sectorId3dCoordinate = { world_coord(sector->position.x) + 10, map_TileHeight(sector->position.x, sector->position.y), -(world_coord(sector->position.y) + 20) };
+		Vector2i sectorId2dCoordinate;
+		pie_RotateProject(&sectorId3dCoordinate, mvp, &sectorId2dCoordinate);
+
+		WzText(std::to_string(sectorId.first), font_medium).render(sectorId2dCoordinate.x, sectorId2dCoordinate.y, WZCOL_GREEN);
+
+		// portals
+
+		for(auto portalId : portals){
+			auto portal = portalArr[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].find(portalId);
+			auto portalA = portal->second.firstSectorPoints[0];
+			auto portalB = portal->second.secondSectorPoints[portal->second.secondSectorPoints.size() -1];
+			
+			auto portalHeight = (map_TileHeight(portalA.x, portalA.y) + map_TileHeight(portalB.x, portalB.y)) / 2;
+			portalA = Vector2i(world_coord(portalA.x) + SECTOR_TILE_SIZE * 0.25, world_coord(portalA.y) + SECTOR_TILE_SIZE * 0.25);
+			portalB = Vector2i(world_coord(portalB.x) + SECTOR_TILE_SIZE * 0.75, world_coord(portalB.y) + SECTOR_TILE_SIZE * 0.75);
+			iV_PolyLine({
+				{ portalA.x, portalHeight + 10, -portalA.y },
+				{ portalA.x, portalHeight + 10, -portalB.y },
+				{ portalB.x, portalHeight + 10, -portalB.y },
+				{ portalB.x, portalHeight + 10, -portalA.y },
+				{ portalA.x, portalHeight + 10, -portalA.y },
+			}, mvp, WZCOL_YELLOW);
+
+			Vector3i portalId3dCoordinate = { (portalA.x + portalB.x) / 2, portalHeight, -(portalA.y + portalB.y) / 2 };
+			Vector2i portalId2dCoordinate;
+			pie_RotateProject(&portalId3dCoordinate, mvp, &portalId2dCoordinate);
+
+			WzText(std::to_string(portalId), font_medium).render(portalId2dCoordinate.x, portalId2dCoordinate.y, WZCOL_YELLOW);
+		}
 	}
 
 	// flowfields
