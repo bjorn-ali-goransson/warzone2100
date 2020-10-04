@@ -1593,6 +1593,19 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				WzText costText(std::to_string(cost), font_medium);
 				costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
 			}
+
+			// position
+
+			if(x < 999 && z < 999){
+				char positionString[7];
+				ssprintf(positionString, "%i,%i", x, z);
+				const Vector3i positionText3dCoords = { (XA + 20) / 2, height, -(ZB - 20) / 2 };
+				Vector2i positionText2dCoords;
+
+				pie_RotateProject(&positionText3dCoords, mvp, &positionText2dCoords);
+				WzText positionText(positionString, font_medium);
+				positionText.render(positionText2dCoords.x, positionText2dCoords.y, WZCOL_TEXT_BRIGHT);
+			}
 	 	}
 	}
 
