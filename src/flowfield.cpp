@@ -1663,6 +1663,9 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				auto startPointY = world_coord(sector->position.y + y) + SECTOR_TILE_SIZE / 2;
 
 				auto portalHeight = map_TileHeight(startPointX, startPointY);
+
+				// origin
+
 				iV_PolyLine({
 					{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
 					{ startPointX - 10, portalHeight + 10, -startPointY + 10 },
@@ -1670,6 +1673,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 					{ startPointX + 10, portalHeight + 10, -startPointY - 10 },
 					{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
 				}, mvp, WZCOL_WHITE);
+				
+				// direction
 
 				iV_PolyLine({
 					{ startPointX, portalHeight + 10, -startPointY },
@@ -1678,6 +1683,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			}
 		}
 		
+		// goal
+
 		for (auto&& goal : cacheEntry.first) {
 			auto goalX = world_coord(goal.x) + SECTOR_TILE_SIZE / 2;
 			auto goalY = world_coord(goal.y) + SECTOR_TILE_SIZE / 2;
