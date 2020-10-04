@@ -381,7 +381,9 @@ void debugDrawFlowfield(const glm::mat4 &mvp);
 
 struct ASTARREQUEST
 {
+	/// Location of unit
 	Vector2i mapSource;
+	/// Target position
 	Vector2i mapGoal;
 	PROPULSION_TYPE propulsion;
 };
@@ -937,6 +939,8 @@ ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
 	printf("\n");
 
 	processFlowfields(job, path);
+	
+	printf("Ending process of job (%i, %i)-(%i, %i) %i-%i [%i]\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
 
 	return job;
 }
@@ -971,6 +975,8 @@ void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals
 unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
 
 void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path) {
+	printf("### Process flowfield from (%i, %i) to (%i, %i)\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y);
+
 	auto& portals = portalArr[propulsionToIndex.at(job.propulsion)];
 	auto& sectors = costFields[propulsionToIndex.at(job.propulsion)];
 	auto& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(job.propulsion)];
@@ -996,6 +1002,7 @@ void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path) {
 		printf("Processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 		processFlowfield(finalGoals, portals, sectors, job.propulsion);
 	}
+	printf("Finished processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 }
 
 void calculateIntegrationField(const std::vector<ComparableVector2i>& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
