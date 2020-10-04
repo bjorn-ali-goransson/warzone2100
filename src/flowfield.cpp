@@ -1690,12 +1690,12 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			auto goalY = world_coord(goal.y) + SECTOR_TILE_SIZE / 2;
 			auto portalHeight = map_TileHeight(goalX, goalY);
 			iV_PolyLine({
-				{ goalX - 10, portalHeight + 10, -goalY - 10 },
-				{ goalX - 10, portalHeight + 10, -goalY + 10 },
-				{ goalX + 10, portalHeight + 10, -goalY + 10 },
-				{ goalX + 10, portalHeight + 10, -goalY - 10 },
-				{ goalX - 10, portalHeight + 10, -goalY - 10 },
-			}, mvp, WZCOL_YELLOW);
+				{ goalX - 10 + 3, portalHeight + 10, -goalY - 10 + 3 },
+				{ goalX - 10 + 3, portalHeight + 10, -goalY + 10 + 3 },
+				{ goalX + 10 + 3, portalHeight + 10, -goalY + 10 + 3 },
+				{ goalX + 10 + 3, portalHeight + 10, -goalY - 10 + 3 },
+				{ goalX - 10 + 3, portalHeight + 10, -goalY - 10 + 3 },
+			}, mvp, WZCOL_RED);
 		}
 	}
 
