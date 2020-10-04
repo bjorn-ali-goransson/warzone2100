@@ -949,7 +949,7 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 	std::unique_lock<std::mutex> lock(portalPathMutex);
 	auto& localPortalPathCache = *portalPathCache[propulsionToIndex.at(propulsion)];
 
-	if (localPortalPathCache.count({sourcePortalId, goalPortalId}) > 0) {
+	if (localPortalPathCache.count({sourcePortalId, goalPortalId})) {
 		return localPortalPathCache[{sourcePortalId, goalPortalId}];
 	} else {
 		lock.unlock();
