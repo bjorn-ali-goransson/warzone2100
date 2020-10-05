@@ -451,7 +451,7 @@ static volatile bool ffpathQuit = false;
 static WZ_THREAD        *ffpathThread = nullptr;
 static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
-static std::list<wz::packaged_task<FLOWFIELDREQUEST()>>    aStarJobs;
+static std::list<wz::packaged_task<FLOWFIELDREQUEST()>>    flowfieldRequests;
 
 FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST job);
 
@@ -469,8 +469,8 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 
 	// Add to end of list
 	wzMutexLock(ffpathMutex);
-	bool isFirstJob = aStarJobs.empty();
-	aStarJobs.push_back(std::move(task));
+	bool isFirstJob = flowfieldRequests.empty();
+	flowfieldRequests.push_back(std::move(task));
 	wzMutexUnlock(ffpathMutex);
 
 	if (isFirstJob)
@@ -513,7 +513,7 @@ static int ffpathThreadFunc(void *)
 
 	while (!ffpathQuit)
 	{
-		if (aStarJobs.empty())
+		if (flowfieldRequests.empty())
 		{
 			wzMutexUnlock(ffpathMutex);
 			wzSemaphoreWait(ffpathSemaphore);  // Go to sleep until needed.
@@ -521,11 +521,11 @@ static int ffpathThreadFunc(void *)
 			continue;
 		}
 
-		if(!aStarJobs.empty())
+		if(!flowfieldRequests.empty())
 		{
 			// Copy the first job from the queue.
-			auto aStarJob = std::move(aStarJobs.front());
-			aStarJobs.pop_front();
+			auto aStarJob = std::move(flowfieldRequests.front());
+			flowfieldRequests.pop_front();
 
 			wzMutexUnlock(ffpathMutex);
 			aStarJob();
