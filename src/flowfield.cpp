@@ -493,6 +493,33 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 	}
 }
 
+std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
+void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path);
+
+ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
+
+	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
+
+	unsigned int sourcePortalId, goalPortalId;
+	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(job.mapSource, job.mapGoal, job.propulsion);
+
+	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId, job.propulsion);
+
+	printf("Starting process of job (%i, %i)-(%i, %i) %i-%i [%i]: ", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
+
+	for(auto p : path){
+		printf("%i, ", p);
+	}
+
+	printf("\n");
+
+	processFlowfields(job, path);
+	
+	printf("Ending process of job (%i, %i)-(%i, %i) %i-%i [%i]\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
+
+	return job;
+}
+
 /** This runs in a separate thread */
 static int ffpathThreadFunc(void *)
 {
@@ -600,9 +627,6 @@ std::array<sectorListT, 4> costFields;
 // Portals connecting sectors
 std::array<portalMapT, 4> portalArr;
 
-// Mutex for logs and debug stuff
-std::mutex logMutex;
-
 // Mutex for portal-level A* path cache
 std::mutex portalPathMutex;
 
@@ -630,8 +654,6 @@ std::array<std::unique_ptr<flowfieldCacheT>, 4> flowfieldCache {
 
 unsigned int _debugTotalSectors = 0;
 unsigned int _debugEmptySectors = 0;
-
-std::deque<unsigned int> _debugPortalPath;
 
 //////////////////////////////////////////////////////////////////////////////////////
 
@@ -819,7 +841,6 @@ std::deque<unsigned int> AbstractAStar::reconstructPath(const unsigned int start
 
 void AbstractAStar::logDebugNodesStats(unsigned int nodesTotal, int nodesInPath) {
 	if (DEBUG_A_STAR) {
-		std::lock_guard<std::mutex> lock(logMutex);
 		debug(LOG_FLOWFIELD, "Nodes total: %d, nodes in path: %d, nodes visited: %d\n", nodesTotal, nodesInPath, _debugNodesVisited);
 	}
 }
@@ -908,39 +929,6 @@ unsigned int PortalAStar::heuristic(unsigned int start)
 unsigned int PortalAStar::distanceCommon(const Portal& portal1, const Portal& portal2) const
 {
 	return straightLineDistance(portal1.getFirstSectorCenter(), portal2.getFirstSectorCenter());
-}
-
-std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
-void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path);
-
-ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
-
-	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
-
-	unsigned int sourcePortalId, goalPortalId;
-	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(job.mapSource, job.mapGoal, job.propulsion);
-
-	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId, job.propulsion);
-
-	if (DEBUG_BUILD) // Mutex is expensive and won't be optimized in release mode
-	{
-		std::lock_guard<std::mutex> lock(logMutex);
-		_debugPortalPath = path;
-	}
-
-	printf("Starting process of job (%i, %i)-(%i, %i) %i-%i [%i]: ", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
-
-	for(auto p : path){
-		printf("%i, ", p);
-	}
-
-	printf("\n");
-
-	processFlowfields(job, path);
-	
-	printf("Ending process of job (%i, %i)-(%i, %i) %i-%i [%i]\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
-
-	return job;
 }
 
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
