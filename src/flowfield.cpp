@@ -453,45 +453,45 @@ static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
 static std::list<wz::packaged_task<FLOWFIELDREQUEST()>>    flowfieldRequests;
 
-FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST job);
+FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST request);
 
 void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
 								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
 	Vector2i source { map_coord(startX), map_coord(startY) };
 	Vector2i goal { map_coord(tX), map_coord(tY) };
 
-	FLOWFIELDREQUEST job;
-	job.mapSource = source;
-	job.mapGoal = goal;
-	job.propulsion = propulsionType;
+	FLOWFIELDREQUEST request;
+	request.mapSource = source;
+	request.mapGoal = goal;
+	request.propulsion = propulsionType;
 
-	wz::packaged_task<FLOWFIELDREQUEST()> task([job]() { return processFlowfieldRequest(job); });
+	wz::packaged_task<FLOWFIELDREQUEST()> task([request]() { return processFlowfieldRequest(request); });
 
 	// Add to end of list
 	wzMutexLock(ffpathMutex);
-	bool isFirstJob = flowfieldRequests.empty();
+	bool isFirstRequest = flowfieldRequests.empty();
 	flowfieldRequests.push_back(std::move(task));
 	wzMutexUnlock(ffpathMutex);
 
-	if (isFirstJob)
+	if (isFirstRequest)
 	{
 		wzSemaphorePost(ffpathSemaphore);  // Wake up processing thread.
 	}
 }
 
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
-void processFlowfields(FLOWFIELDREQUEST job, std::deque<unsigned int>& path);
+void processFlowfields(FLOWFIELDREQUEST request, std::deque<unsigned int>& path);
 
-FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST job) {
+FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST request) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
 	unsigned int sourcePortalId, goalPortalId;
-	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(job.mapSource, job.mapGoal, job.propulsion);
+	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(request.mapSource, request.mapGoal, request.propulsion);
 
-	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId, job.propulsion);
+	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId, request.propulsion);
 
-	printf("Starting process of job (%i, %i)-(%i, %i) %i-%i [%i]: ", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
+	printf("Starting process of request (%i, %i)-(%i, %i) %i-%i [%i]: ", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
 
 	for(auto p : path){
 		printf("%i, ", p);
@@ -499,11 +499,11 @@ FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST job) {
 
 	printf("\n");
 
-	processFlowfields(job, path);
+	processFlowfields(request, path);
 	
-	printf("Ending process of job (%i, %i)-(%i, %i) %i-%i [%i]\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
+	printf("Ending process of request (%i, %i)-(%i, %i) %i-%i [%i]\n", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
 
-	return job;
+	return request;
 }
 
 /** This runs in a separate thread */
@@ -523,12 +523,12 @@ static int ffpathThreadFunc(void *)
 
 		if(!flowfieldRequests.empty())
 		{
-			// Copy the first job from the queue.
-			auto aStarJob = std::move(flowfieldRequests.front());
+			// Copy the first request from the queue.
+			auto flowfieldRequest = std::move(flowfieldRequests.front());
 			flowfieldRequests.pop_front();
 
 			wzMutexUnlock(ffpathMutex);
-			aStarJob();
+			flowfieldRequest();
 			wzMutexLock(ffpathMutex);
 		}
 	}
@@ -935,14 +935,14 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
 unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
 
-void processFlowfields(FLOWFIELDREQUEST job, std::deque<unsigned int>& path) {
-	printf("### Process flowfield from (%i, %i) to (%i, %i)\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y);
+void processFlowfields(FLOWFIELDREQUEST request, std::deque<unsigned int>& path) {
+	printf("### Process flowfield from (%i, %i) to (%i, %i)\n", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y);
 
-	auto& portals = portalArr[propulsionToIndex.at(job.propulsion)];
-	auto& sectors = costFields[propulsionToIndex.at(job.propulsion)];
-	auto& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(job.propulsion)];
+	auto& portals = portalArr[propulsionToIndex.at(request.propulsion)];
+	auto& sectors = costFields[propulsionToIndex.at(request.propulsion)];
+	auto& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(request.propulsion)];
 
-	Vector2i localStartPoint = job.mapSource;
+	Vector2i localStartPoint = request.mapSource;
 
 	for (unsigned int leavePortalId : path) {
 		Portal& leavePortal = portals[leavePortalId];
@@ -951,17 +951,17 @@ void processFlowfields(FLOWFIELDREQUEST job, std::deque<unsigned int>& path) {
 
 		if (localFlowfieldCache.count(goals) == 0) {
 			printf("Processing flowfield path segment\n");
-			processFlowfield(goals, portals, sectors, job.propulsion);
+			processFlowfield(goals, portals, sectors, request.propulsion);
 		}
 	}
 
 	// Final goal task
 	// TODO: in future with better integration with Warzone, there might be multiple goals for a formation, so droids don't bump into each other
-	std::vector<ComparableVector2i> finalGoals { job.mapGoal };
+	std::vector<ComparableVector2i> finalGoals { request.mapGoal };
 
 	if (localFlowfieldCache.count(finalGoals) == 0) {
 		printf("Processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
-		processFlowfield(finalGoals, portals, sectors, job.propulsion);
+		processFlowfield(finalGoals, portals, sectors, request.propulsion);
 	}
 	printf("Finished processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 }
