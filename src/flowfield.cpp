@@ -454,7 +454,7 @@ static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
 using aStarJob = wz::packaged_task<FLOWFIELDREQUEST()>;
 static std::list<aStarJob>    aStarJobs;
 
-FLOWFIELDREQUEST processFlowfieldJob(FLOWFIELDREQUEST job);
+FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST job);
 
 void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
 								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
@@ -466,7 +466,7 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 	job.mapGoal = goal;
 	job.propulsion = propulsionType;
 
-	aStarJob task([job]() { return processFlowfieldJob(job); });
+	aStarJob task([job]() { return processFlowfieldRequest(job); });
 
 	// Add to end of list
 	wzMutexLock(ffpathMutex);
@@ -483,7 +483,7 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
 void processFlowfields(FLOWFIELDREQUEST job, std::deque<unsigned int>& path);
 
-FLOWFIELDREQUEST processFlowfieldJob(FLOWFIELDREQUEST job) {
+FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST job) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
