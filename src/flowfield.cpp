@@ -379,20 +379,12 @@ std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned 
 void debugDrawFlowfields(const glm::mat4 &mvp);
 void debugDrawFlowfield(const glm::mat4 &mvp);
 
-struct ASTARREQUEST
+struct FLOWFIELDREQUEST
 {
 	/// Location of unit
 	Vector2i mapSource;
 	/// Target position
 	Vector2i mapGoal;
-	PROPULSION_TYPE propulsion;
-};
-
-struct FLOWFIELDREQUEST
-{
-	std::vector<Vector2i> goals;
-	std::map<unsigned int, Portal>& portals;
-	const sectorListT& sectors;
 	PROPULSION_TYPE propulsion;
 };
 
@@ -462,17 +454,17 @@ static volatile bool ffpathQuit = false;
 static WZ_THREAD        *ffpathThread = nullptr;
 static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
-using aStarJob = wz::packaged_task<ASTARREQUEST()>;
+using aStarJob = wz::packaged_task<FLOWFIELDREQUEST()>;
 static std::list<aStarJob>    aStarJobs;
 
-ASTARREQUEST processFlowfieldJob(ASTARREQUEST job);
+FLOWFIELDREQUEST processFlowfieldJob(FLOWFIELDREQUEST job);
 
 void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
 								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
 	Vector2i source { map_coord(startX), map_coord(startY) };
 	Vector2i goal { map_coord(tX), map_coord(tY) };
 
-	ASTARREQUEST job;
+	FLOWFIELDREQUEST job;
 	job.mapSource = source;
 	job.mapGoal = goal;
 	job.propulsion = propulsionType;
@@ -492,9 +484,9 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 }
 
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
-void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path);
+void processFlowfields(FLOWFIELDREQUEST job, std::deque<unsigned int>& path);
 
-ASTARREQUEST processFlowfieldJob(ASTARREQUEST job) {
+FLOWFIELDREQUEST processFlowfieldJob(FLOWFIELDREQUEST job) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
@@ -947,7 +939,7 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion);
 unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
 
-void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path) {
+void processFlowfields(FLOWFIELDREQUEST job, std::deque<unsigned int>& path) {
 	printf("### Process flowfield from (%i, %i) to (%i, %i)\n", job.mapSource.x, job.mapSource.y, job.mapGoal.x, job.mapGoal.y);
 
 	auto& portals = portalArr[propulsionToIndex.at(job.propulsion)];
