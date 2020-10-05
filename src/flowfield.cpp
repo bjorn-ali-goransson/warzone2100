@@ -958,7 +958,7 @@ std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int 
 		PortalAStar portalWalker(goalPortalId, portals);
 		std::deque<unsigned int> path = portalWalker.findPath(sourcePortalId, static_cast<unsigned int>(portals.size()));
 
-		printf("Found path[%i]: ", (int)path.size());
+		printf("Path not cached, deducted path[%i]: ", (int)path.size());
 		for(auto i : path){
 			printf("%i, ", i);
 		}
@@ -1012,7 +1012,7 @@ void calculateFlowfield(Flowfield* flowField, Sector* integrationField);
 void processFlowfield(std::vector<ComparableVector2i> goals, portalMapT& portals, const sectorListT& sectors, PROPULSION_TYPE propulsion) {
 	Flowfield* flowField = new Flowfield();
 	auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
-	printf("Still processing flowfield (%i, %i)\n", goals[0].x, goals[0].y);
+	printf("Processing flowfield [%i] (%i, %i)\n", (int)goals.size(), goals[0].x, goals[0].y);
 	flowField->sectorId = sectorId;
 	auto& sector = sectors[sectorId];
 
