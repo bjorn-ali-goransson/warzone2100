@@ -464,8 +464,6 @@ static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
 using aStarJob = wz::packaged_task<ASTARREQUEST()>;
 static std::list<aStarJob>    aStarJobs;
-using flowFieldJob = wz::packaged_task<FLOWFIELDREQUEST()>;
-static std::list<flowFieldJob>    flowFieldJobs;
 
 ASTARREQUEST processFlowfieldJob(ASTARREQUEST job);
 
@@ -527,7 +525,7 @@ static int ffpathThreadFunc(void *)
 
 	while (!ffpathQuit)
 	{
-		if (aStarJobs.empty() && flowFieldJobs.empty())
+		if (aStarJobs.empty())
 		{
 			wzMutexUnlock(ffpathMutex);
 			wzSemaphoreWait(ffpathSemaphore);  // Go to sleep until needed.
@@ -543,17 +541,6 @@ static int ffpathThreadFunc(void *)
 
 			wzMutexUnlock(ffpathMutex);
 			aStarJob();
-			wzMutexLock(ffpathMutex);
-		}
-
-		while(!flowFieldJobs.empty()) // won't work so well with multiple threads
-		{
-			// Copy the first job from the queue.
-			flowFieldJob flowFieldJob = std::move(flowFieldJobs.front());
-			flowFieldJobs.pop_front();
-
-			wzMutexUnlock(ffpathMutex);
-			flowFieldJob();
 			wzMutexLock(ffpathMutex);
 		}
 	}
