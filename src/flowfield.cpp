@@ -467,7 +467,7 @@ static std::list<aStarJob>    aStarJobs;
 using flowFieldJob = wz::packaged_task<FLOWFIELDREQUEST()>;
 static std::list<flowFieldJob>    flowFieldJobs;
 
-ASTARREQUEST aStarJobExecute(ASTARREQUEST job);
+ASTARREQUEST processFlowfieldJob(ASTARREQUEST job);
 
 void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
 								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
@@ -479,7 +479,7 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 	job.mapGoal = goal;
 	job.propulsion = propulsionType;
 
-	aStarJob task([job]() { return aStarJobExecute(job); });
+	aStarJob task([job]() { return processFlowfieldJob(job); });
 
 	// Add to end of list
 	wzMutexLock(ffpathMutex);
@@ -496,7 +496,7 @@ void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, in
 std::deque<unsigned int> portalWalker(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
 void processFlowfields(ASTARREQUEST job, std::deque<unsigned int>& path);
 
-ASTARREQUEST aStarJobExecute(ASTARREQUEST job) {
+ASTARREQUEST processFlowfieldJob(ASTARREQUEST job) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
