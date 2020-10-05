@@ -464,10 +464,8 @@ static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
 using aStarJob = wz::packaged_task<ASTARREQUEST()>;
 static std::list<aStarJob>    aStarJobs;
-static std::unordered_map<uint32_t, wz::future<ASTARREQUEST>> aStarResults;
 using flowFieldJob = wz::packaged_task<FLOWFIELDREQUEST()>;
 static std::list<flowFieldJob>    flowFieldJobs;
-static std::unordered_map<uint32_t, wz::future<FLOWFIELDREQUEST>> flowFieldResults;
 
 ASTARREQUEST aStarJobExecute(ASTARREQUEST job);
 
