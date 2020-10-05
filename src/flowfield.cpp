@@ -376,9 +376,6 @@ Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, 
 
 std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, PROPULSION_TYPE propulsion);
 
-void debugDrawFlowfields(const glm::mat4 &mvp);
-void debugDrawFlowfield(const glm::mat4 &mvp);
-
 struct FLOWFIELDREQUEST
 {
 	/// Location of unit
@@ -1481,14 +1478,6 @@ std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned 
 	return coordsPath;
 }
 
-void debugDrawFlowfields(const glm::mat4 &mvp) {
-	if (!isFlowfieldEnabled()) return;
-
-	if (VECTOR_FIELD_DEBUG) {
-		debugDrawFlowfield(mvp);
-	}
-}
-
 void debugDrawFlowfield(const glm::mat4 &mvp) {
 	pie_SetRendMode(REND_OPAQUE);
 
@@ -1696,4 +1685,12 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 	// 	previousPortal = &currentPortal;
 	// }
+}
+
+void debugDrawFlowfields(const glm::mat4 &mvp) {
+	if (!isFlowfieldEnabled()) return;
+
+	if (VECTOR_FIELD_DEBUG) {
+		debugDrawFlowfield(mvp);
+	}
 }
