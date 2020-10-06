@@ -455,22 +455,20 @@ static std::list<wz::packaged_task<FLOWFIELDREQUEST()>>    flowfieldRequests;
 
 FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST request);
 
-void calculateFlowfieldsAsync(MOVE_CONTROL * psMove, unsigned id, int startX, int startY, int tX, int tY, PROPULSION_TYPE propulsionType,
-								DROID_TYPE droidType, FPATH_MOVETYPE moveType, int owner, bool acceptNearest, StructureBounds const & dstStructure) {
+void calculateFlowfieldsAsync(int startX, int startY, int targetX, int targetY, PROPULSION_TYPE propulsion) {
 	Vector2i source { map_coord(startX), map_coord(startY) };
-	Vector2i goal { map_coord(tX), map_coord(tY) };
+	Vector2i goal { map_coord(targetX), map_coord(targetY) };
 
 	FLOWFIELDREQUEST request;
 	request.mapSource = source;
 	request.mapGoal = goal;
-	request.propulsion = propulsionType;
+	request.propulsion = propulsion;
 
-	wz::packaged_task<FLOWFIELDREQUEST()> task([request]() { return processFlowfieldRequest(request); });
+	wz::packaged_task<FLOWFIELDREQUEST()> requestTask([request]() { return processFlowfieldRequest(request); });
 
-	// Add to end of list
 	wzMutexLock(ffpathMutex);
 	bool isFirstRequest = flowfieldRequests.empty();
-	flowfieldRequests.push_back(std::move(task));
+	flowfieldRequests.push_back(std::move(requestTask));
 	wzMutexUnlock(ffpathMutex);
 
 	if (isFirstRequest)

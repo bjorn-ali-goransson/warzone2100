@@ -464,8 +464,7 @@ FPATH_RETVAL fpathDroidRoute(DROID *psDroid, SDWORD tX, SDWORD tY, FPATH_MOVETYP
 			printf("Got a portal path to (%d, %d)! Length=%d\n", psDroid->sMove.destination.x, psDroid->sMove.destination.y, static_cast<int>(psDroid->sMove.portalPath.size()));
 			return FPR_OK;
 		} else {
-			calculateFlowfieldsAsync(&psDroid->sMove, psDroid->id, startPos.x, startPos.y, endPos.x, endPos.y, psPropStats->propulsionType,
-												psDroid->droidType, moveType, psDroid->player, acceptNearest, dstStructure);
+			calculateFlowfieldsAsync(startPos.x, startPos.y, endPos.x, endPos.y, psPropStats->propulsionType);
 			return FPR_WAIT;
 		}
 	}
