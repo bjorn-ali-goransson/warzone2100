@@ -1394,7 +1394,7 @@ std::pair<unsigned int, unsigned int> findPortalPathBetweenPoints(Vector2i a, Ve
 
 	// Use straight-line distance to select source portal and goal portal
 	// Isn't this gonna do an awful lot of straightLineDistance eg sqrt calculations?
-	const auto lessDistance = [&](Vector2i source) {
+	const auto distanceSort = [&](Vector2i source) {
 		return [&](const unsigned int id1, const unsigned int id2) {
 			Portal& p1 = portals[id1];
 			Portal& p2 = portals[id2];
@@ -1405,8 +1405,8 @@ std::pair<unsigned int, unsigned int> findPortalPathBetweenPoints(Vector2i a, Ve
 		};
 	};
 
-	const auto sourcePortalId = *std::min_element(sourcePortals.begin(), sourcePortals.end(), lessDistance(a));
-	const auto goalPortalId = *std::min_element(goalPortals.begin(), goalPortals.end(), lessDistance(b));
+	const auto sourcePortalId = *std::min_element(sourcePortals.begin(), sourcePortals.end(), distanceSort(a));
+	const auto goalPortalId = *std::min_element(goalPortals.begin(), goalPortals.end(), distanceSort(b));
 
 	return { sourcePortalId , goalPortalId };
 }
