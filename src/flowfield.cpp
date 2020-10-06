@@ -490,16 +490,14 @@ FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST request) {
 	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId, request.propulsion);
 
 	printf("Starting process of request (%i, %i)-(%i, %i) %i-%i [%i]: ", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
-
 	for(auto p : path){
 		printf("%i, ", p);
 	}
-
 	printf("\n");
 
 	processFlowfields(request, path);
 	
-	printf("Ending process of request (%i, %i)-(%i, %i) %i-%i [%i]\n", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y, sourcePortalId, goalPortalId, (int)path.size());
+	printf("Ending process of request\n");
 
 	return request;
 }
