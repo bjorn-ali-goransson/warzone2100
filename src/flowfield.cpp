@@ -362,7 +362,7 @@ Vector2i getPointByFlatIndex(unsigned int index);
 
 unsigned int straightLineDistance(Vector2i source, Vector2i destination);
 
-std::pair<unsigned int, unsigned int> mapSourceGoalToPortals(Vector2i mapSource, Vector2i mapGoal, PROPULSION_TYPE propulsion);
+std::pair<unsigned int, unsigned int> findPortalPathBetweenPoints(Vector2i mapSource, Vector2i mapGoal, PROPULSION_TYPE propulsion);
 
 /*
 	* Helps to decide if we should use firstSectorPoints or secondSectorPoints as goal points
@@ -421,7 +421,7 @@ std::deque<unsigned int> getFlowfieldPathFromCache(unsigned startX, unsigned sta
 	Vector2i goal { map_coord(tX), map_coord(tY) };
 	
 	unsigned int sourcePortalId, goalPortalId;
-	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(source, goal, propulsion);
+	std::tie(sourcePortalId, goalPortalId) = findPortalPathBetweenPoints(source, goal, propulsion);
 
 	return getFlowfieldPathFromCache(sourcePortalId, goalPortalId, propulsion);
 }
@@ -485,7 +485,7 @@ FLOWFIELDREQUEST processFlowfieldRequest(FLOWFIELDREQUEST request) {
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
 	unsigned int sourcePortalId, goalPortalId;
-	std::tie(sourcePortalId, goalPortalId) = mapSourceGoalToPortals(request.mapSource, request.mapGoal, request.propulsion);
+	std::tie(sourcePortalId, goalPortalId) = findPortalPathBetweenPoints(request.mapSource, request.mapGoal, request.propulsion);
 
 	std::deque<unsigned int> path = portalWalker(sourcePortalId, goalPortalId, request.propulsion);
 
@@ -1383,9 +1383,9 @@ unsigned int straightLineDistance(Vector2i source, Vector2i destination) {
 	return 1 * sqrt(dx * dx + dy * dy);
 }
 
-std::pair<unsigned int, unsigned int> mapSourceGoalToPortals(Vector2i mapSource, Vector2i mapGoal, const PROPULSION_TYPE propulsion) {
-	const unsigned int sourceSector = AbstractSector::getIdByCoords(mapSource);
-	const unsigned int goalSector = AbstractSector::getIdByCoords(mapGoal);
+std::pair<unsigned int, unsigned int> findPortalPathBetweenPoints(Vector2i a, Vector2i b, const PROPULSION_TYPE propulsion) {
+	const unsigned int sourceSector = AbstractSector::getIdByCoords(a);
+	const unsigned int goalSector = AbstractSector::getIdByCoords(b);
 	const auto& sectors = costFields[propulsionToIndex.at(propulsion)];
 	const auto& sourcePortals = sectors[sourceSector]->getPortals();
 	const auto& goalPortals = sectors[goalSector]->getPortals();
@@ -1393,6 +1393,7 @@ std::pair<unsigned int, unsigned int> mapSourceGoalToPortals(Vector2i mapSource,
 	auto& portals = portalArr[propulsionToIndex.at(propulsion)];
 
 	// Use straight-line distance to select source portal and goal portal
+	// Isn't this gonna do an awful lot of straightLineDistance eg sqrt calculations?
 	const auto lessDistance = [&](Vector2i source) {
 		return [&](const unsigned int id1, const unsigned int id2) {
 			Portal& p1 = portals[id1];
@@ -1404,8 +1405,8 @@ std::pair<unsigned int, unsigned int> mapSourceGoalToPortals(Vector2i mapSource,
 		};
 	};
 
-	const auto sourcePortalId = *std::min_element(sourcePortals.begin(), sourcePortals.end(), lessDistance(mapSource));
-	const auto goalPortalId = *std::min_element(goalPortals.begin(), goalPortals.end(), lessDistance(mapGoal));
+	const auto sourcePortalId = *std::min_element(sourcePortals.begin(), sourcePortals.end(), lessDistance(a));
+	const auto goalPortalId = *std::min_element(goalPortals.begin(), goalPortals.end(), lessDistance(b));
 
 	return { sourcePortalId , goalPortalId };
 }
