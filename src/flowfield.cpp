@@ -41,6 +41,7 @@ bool isFlowfieldEnabled() {
 
 //
 
+/// This type is ONLY needed for adding vectors as key to eg. a map, because GLM's vector implementation does not include an is-less-than operator overload.
 struct ComparableVector2i : Vector2i {
 	ComparableVector2i(int x, int y) : Vector2i(x, y) {}
 	ComparableVector2i(Vector2i value) : Vector2i(value) {}
