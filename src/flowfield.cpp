@@ -41,7 +41,9 @@ bool isFlowfieldEnabled() {
 
 //
 
-/// This type is ONLY needed for adding vectors as key to eg. a map, because GLM's vector implementation does not include an is-less-than operator overload.
+/// This type is ONLY needed for adding vectors as key to eg. a map.
+/// because GLM's vector implementation does not include an is-less-than operator overload,
+/// which is required by std::map.
 struct ComparableVector2i : Vector2i {
 	ComparableVector2i(int x, int y) : Vector2i(x, y) {}
 	ComparableVector2i(Vector2i value) : Vector2i(value) {}
@@ -115,17 +117,6 @@ struct VectorT {
 			x /= length;
 			y /= length;
 		}
-	}
-};
-
-struct Flowfield {
-	std::array<glm::i8vec2, FF_MAP_AREA> vectors;
-
-	void setVector(Vector2i p, glm::i8vec2 vector) {
-		vectors[p.y * FF_MAP_HEIGHT + p.x] = vector;
-	}
-	glm::i8vec2 getVector(Vector2i p) const {
-		return vectors[p.y * FF_MAP_HEIGHT + p.x];
 	}
 };
 
@@ -318,17 +309,45 @@ std::array<std::array<uint8_t, FF_MAP_AREA>, 4> costFields;
 // Mutex for sector-level vector field cache
 std::mutex flowfieldMutex;
 
-// Caches
-typedef std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>> flowfieldCacheT;
+//////////////////////////////////////////////////////////////////////////////////////
 
-std::array<std::unique_ptr<flowfieldCacheT>, 4> flowfieldCache {
-	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT()),
-	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT()),
-	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT()),
-	std::unique_ptr<flowfieldCacheT>(new flowfieldCacheT())
+struct IntegrationField {
+	unsigned short cost[FF_MAP_AREA];
+	void setTile(unsigned int x, unsigned int y, unsigned short cost){
+		this->cost[y * FF_MAP_HEIGHT + x] = cost;
+	}
+	unsigned short getTile(unsigned int x, unsigned int y){
+		return this->cost[y * FF_MAP_HEIGHT + x];
+	}
 };
 
-//////////////////////////////////////////////////////////////////////////////////////
+struct CostField {
+	unsigned short cost[FF_MAP_AREA];
+	void setTile(unsigned int x, unsigned int y, unsigned short cost){
+		this->cost[y * FF_MAP_HEIGHT + x] = cost;
+	}
+	unsigned short getTile(unsigned int x, unsigned int y){
+		return this->cost[y * FF_MAP_HEIGHT + x];
+	}
+};
+
+struct Flowfield {
+	std::array<glm::i8vec2, FF_MAP_AREA> vectors;
+
+	void setVector(unsigned short x, unsigned short y, glm::i8vec2 vector) {
+		vectors[y * FF_MAP_HEIGHT + x] = vector;
+	}
+	glm::i8vec2 getVector(unsigned short x, unsigned short y) const {
+		return vectors[y * FF_MAP_HEIGHT + x];
+	}
+};
+
+std::array<std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>, 4> flowfieldCache {
+	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
+	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
+	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
+	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>())
+};
 
 struct Node {
 	unsigned short predecessorCost;
@@ -340,10 +359,10 @@ struct Node {
 	}
 };
 
-void calculateIntegrationField(const std::vector<ComparableVector2i>& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField);
-void calculateFlowfield(Flowfield* flowField, Sector* integrationField);
-unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost);
+std::unique_ptr<CostField> costField = std::unique_ptr<CostField>(new CostField());
+
+void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField);
+void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField);
 
 void processFlowfield(FLOWFIELDREQUEST request) {
 
@@ -359,87 +378,80 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 
 
-	// Final goal task
-	// TODO: in future with better integration with Warzone, there might be multiple goals for a formation, so droids don't bump into each other
+	// TODO: multiple goals for formations
 	std::vector<ComparableVector2i> finalGoals { request.mapGoal };
 
-	if (localFlowfieldCache.count(finalGoals) == 0) {
-
-
-
-
-
-
-
-
-
-
-		Flowfield* flowField = new Flowfield();
-		auto sectorId = AbstractSector::getIdByCoords(*goals.begin());
-		printf("Processing flowfield [%i] (%i, %i)\n", (int)goals.size(), goals[0].x, goals[0].y);
-		flowField->sectorId = sectorId;
-		auto& sector = sectors[sectorId];
-
-		// NOTE: Vector field for given might have been calculated by the time this task have chance to run.
-		// I don't care, since this task has proven to be short, and I want to avoid lock contention when checking cache
-
-		Sector* integrationField = new Sector();
-		printf("----start\n");
-		calculateIntegrationField(goals, sectors, sector.get(), integrationField);
-		printf("----end\n");
-
-		calculateFlowfield(flowField, integrationField);
-
-		{
-			std::lock_guard<std::mutex> lock(flowfieldMutex);
-			auto cache = flowfieldCache[propulsionToIndex.at(propulsion)].get();
-
-			printf("Inserting (%i, %i)[+%i] into cache\n", goals[0].x, goals[0].y, (int)goals.size() - 1);
-
-			cache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
-		}
-
-
-
-
-
-
-
-		printf("Processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
-		processFlowfield(finalGoals, portals, sectors, request.propulsion);
+	if (localFlowfieldCache.count(finalGoals)) {
+		printf("Found cached flowfield [%i] (%i, %i)\n", (int)finalGoals.size(), finalGoals[0].x, finalGoals[0].y);
+		return;
 	}
-	printf("Finished processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 
+
+
+
+
+
+
+
+	printf("Processing flowfield [%i] (%i, %i)\n", (int)finalGoals.size(), finalGoals[0].x, finalGoals[0].y);
+
+	IntegrationField* integrationField = new IntegrationField();
+	calculateIntegrationField(finalGoals, integrationField);
+	printf("Finished processing integration field (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
+
+	Flowfield* flowField = new Flowfield();
+	calculateFlowfield(flowField, integrationField);
+
+	{
+		std::lock_guard<std::mutex> lock(flowfieldMutex);
+		auto cache = flowfieldCache[propulsionToIndex.at(request.propulsion)].get();
+
+		printf("Inserting (%i, %i)[+%i] into cache\n", finalGoals[0].x, finalGoals[0].y, (int)finalGoals.size() - 1);
+
+		cache->insert(std::make_pair(finalGoals, std::unique_ptr<Flowfield>(flowField)));
+	}
+
+	printf("Finished processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 }
 
-void calculateIntegrationField(const std::vector<ComparableVector2i>& points, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
+unsigned int pointToMapIndex(Vector2i p) {
+	return p.y * FF_MAP_WIDTH + p.x;
+}
+
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField);
+
+void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
 	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
-	for (unsigned int x = 0; x < SECTOR_SIZE; x++) {
-		for (unsigned int y = 0; y < SECTOR_SIZE; y++) {
-			Tile tile;
-			tile.cost = NOT_PASSABLE;
-			integrationField->setTile({x, y}, tile);
+	for (unsigned int x = 0; x < mapWidth; x++) {
+		for (unsigned int y = 0; y < mapHeight; y++) {
+			integrationField->setTile(x, y, NOT_PASSABLE);
 		}
 	}
 
-	// Thanks to priority queue, we have "water pouring effect".
+	// Thanks to priority queue, we get the water ripple effect - closest tile first.
 	// First we go where cost is the lowest, so we don't discover better path later.
 	std::priority_queue<Node> openSet;
 
 	for (auto& point : points) {
-		openSet.push({ 0, pointToIndex(point) });
+		openSet.push({ 0, pointToMapIndex(point) });
 	}
 
 	while (!openSet.empty()) {
-		integrateFlowfieldPoints(openSet, sectors, sector, integrationField);
+		integrateFlowfieldPoints(openSet, integrationField);
 		openSet.pop();
 	}
 }
 
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorListT& sectors, AbstractSector* sector, Sector* integrationField) {
+Vector2i indexToMapPoint(unsigned int index) {
+	const unsigned int y = index / FF_MAP_WIDTH;
+	const unsigned int x = index % FF_MAP_WIDTH;
+	return Vector2i { x, y };
+}
+
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField) {
 	const Node& node = openSet.top();
-	Vector2i nodePoint = getPointByFlatIndex(node.index);
+	Vector2i nodePoint = indexToMapPoint(node.index);
 	Tile nodeTile = sector->getTile(nodePoint);
 
 	if (nodeTile.isBlocking()) {
@@ -467,12 +479,21 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, const sectorLi
 	}
 }
 
-void calculateFlowfield(Flowfield* flowField, Sector* integrationField) {
-	for (int y = 0; y < SECTOR_SIZE; y++) {
-		for (int x = 0; x < SECTOR_SIZE; x++) {
-			Vector2i p = {x, y};
-			Tile tile = integrationField->getTile(p);
-			if (tile.isBlocking() || tile.cost == COST_MIN) {
+unsigned short getCostOrElse(IntegrationField* integrationField, Vector2i coords, unsigned short elseCost) {
+	const auto cost = integrationField->getTile(coords.x, coords.y);
+	
+	if (cost == NOT_PASSABLE) {
+		return elseCost * OBSTACLE_AVOIDANCE_COEFF;
+	}
+
+	return cost;
+}
+
+void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField) {
+	for (int y = 0; y < mapHeight; y++) {
+		for (int x = 0; x < mapWidth; x++) {
+			const auto cost = integrationField->getTile(x, y);
+			if (cost == NOT_PASSABLE || cost == COST_MIN) {
 				// Skip goal and non-passable
 				// TODO: probably 0.0 should be only for actual goals, not intermediate goals when crossing sectors
 				flowField->setVector(p, VectorT { 0.0f, 0.0f });
@@ -502,20 +523,6 @@ void calculateFlowfield(Flowfield* flowField, Sector* integrationField) {
 			flowField->setVector(p, vector);
 		}
 	}
-}
-
-unsigned short getCostOrElse(Sector* integrationField, Vector2i coords, unsigned short elseCost) {
-	if (coords.x < 0 || coords.y < 0 || coords.x >= SECTOR_SIZE || coords.y >= SECTOR_SIZE) {
-		// if near sector border, assume its safe to go to nearby sector
-		return std::max<short>(static_cast<short>(elseCost), static_cast<short>(elseCost) - static_cast<short>(1));
-	}
-
-	const Tile& tile = integrationField->getTile(coords);
-	if (tile.isBlocking()) {
-		return elseCost * OBSTACLE_AVOIDANCE_COEFF;
-	}
-
-	return tile.cost;
 }
 
 void initCostFields()
@@ -610,22 +617,6 @@ Tile createTile(Vector2i p, PROPULSION_TYPE propulsion)
 	return tile;
 }
 
-unsigned int pointToIndex(Vector2i p) {
-	return p.y * numHorizontalTiles + p.x;
-}
-
-Vector2i getPointByFlatIndex(unsigned int index) {
-	const unsigned int y = index / numHorizontalTiles;
-	const unsigned int x = index % numHorizontalTiles;
-	return Vector2i { x, y };
-}
-
-unsigned int straightLineDistance(Vector2i source, Vector2i destination) {
-	const unsigned int dx = abs(static_cast<int>(source.x) - static_cast<int>(destination.x));
-	const unsigned int dy = abs(static_cast<int>(source.y) - static_cast<int>(destination.y));
-	return 1 * sqrt(dx * dx + dy * dy);
-}
-
 std::deque<unsigned int> getFlowfieldPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
 	std::lock_guard<std::mutex> lock(portalPathMutex);
 	auto& localPortalPathCache = *portalPathCache[propulsionToIndex.at(propulsion)];
@@ -643,7 +634,7 @@ Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, 
 	std::vector<ComparableVector2i> goals = portalToGoals(nextPortal, currentPosition);
 
 	std::lock_guard<std::mutex> lock(flowfieldMutex);
-	flowfieldCacheT& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(propulsion)];
+	std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(propulsion)];
 
 	if(localFlowfieldCache.count(goals) == 0){
 		// (0,0) vector considered invalid
