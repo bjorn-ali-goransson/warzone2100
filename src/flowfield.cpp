@@ -67,7 +67,7 @@ struct ComparableVector2i : Vector2i {
 #define FF_MAP_AREA FF_MAP_WIDTH*FF_MAP_HEIGHT
 #define FF_TILE_SIZE 128
 
-constexpr const unsigned short NOT_PASSABLE = std::numeric_limits<unsigned short>::max();
+constexpr const unsigned short COST_NOT_PASSABLE = std::numeric_limits<unsigned short>::max();
 constexpr const unsigned short COST_MIN = 1;
 
 // Decides how much slopes should be avoided
@@ -102,21 +102,7 @@ struct Tile {
 	unsigned short cost = COST_MIN;
 	bool Tile::isBlocking() const
 	{
-		return cost == NOT_PASSABLE;
-	}
-};
-
-struct VectorT {
-	float x;
-	float y;
-
-	void normalize() {
-		const float length = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
-
-		if (length != 0) {
-			x /= length;
-			y /= length;
-		}
+		return cost == COST_NOT_PASSABLE;
 	}
 };
 
@@ -303,45 +289,79 @@ const std::map<PROPULSION_TYPE, int> propulsionToIndexUnique
 	{PROPULSION_TYPE_LIFT, 3}
 };
 
-// Cost fields for ground, hover and lift movement types
-std::array<std::array<uint8_t, FF_MAP_AREA>, 4> costFields;
-
 // Mutex for sector-level vector field cache
 std::mutex flowfieldMutex;
 
 //////////////////////////////////////////////////////////////////////////////////////
 
+inline int mapCoordinateToArrayIndex(unsigned short x, unsigned short y) { return y * FF_MAP_HEIGHT + x; }
+
 struct IntegrationField {
 	unsigned short cost[FF_MAP_AREA];
-	void setTile(unsigned int x, unsigned int y, unsigned short cost){
-		this->cost[y * FF_MAP_HEIGHT + x] = cost;
+	void setCost(unsigned int x, unsigned int y, unsigned short cost){
+		this->cost[mapCoordinateToArrayIndex(x, y)] = cost;
 	}
-	unsigned short getTile(unsigned int x, unsigned int y){
-		return this->cost[y * FF_MAP_HEIGHT + x];
+	unsigned short getCost(unsigned int x, unsigned int y){
+		return this->cost[mapCoordinateToArrayIndex(x, y)];
+	}
+	void setCost(unsigned int index, unsigned short cost){
+		this->cost[index] = cost;
+	}
+	unsigned short getCost(unsigned int index){
+		return this->cost[index];
 	}
 };
 
 struct CostField {
 	unsigned short cost[FF_MAP_AREA];
-	void setTile(unsigned int x, unsigned int y, unsigned short cost){
-		this->cost[y * FF_MAP_HEIGHT + x] = cost;
+	void setCost(unsigned int x, unsigned int y, unsigned short cost){
+		this->cost[mapCoordinateToArrayIndex(x, y)] = cost;
 	}
-	unsigned short getTile(unsigned int x, unsigned int y){
-		return this->cost[y * FF_MAP_HEIGHT + x];
+	unsigned short getCost(unsigned int x, unsigned int y){
+		return this->cost[mapCoordinateToArrayIndex(x, y)];
+	}
+	void setCost(unsigned int index, unsigned short cost){
+		this->cost[index] = cost;
+	}
+	unsigned short getCost(unsigned int index){
+		return this->cost[index];
+	}
+};
+
+struct VectorT {
+	float x;
+	float y;
+
+	void normalize() {
+		const float length = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
+
+		if (length != 0) {
+			x /= length;
+			y /= length;
+		}
 	}
 };
 
 struct Flowfield {
-	std::array<glm::i8vec2, FF_MAP_AREA> vectors;
+	std::array<VectorT, FF_MAP_AREA> vectors;
 
-	void setVector(unsigned short x, unsigned short y, glm::i8vec2 vector) {
-		vectors[y * FF_MAP_HEIGHT + x] = vector;
+	void setVector(unsigned short x, unsigned short y, VectorT vector) {
+		vectors[mapCoordinateToArrayIndex(x, y)] = vector;
 	}
-	glm::i8vec2 getVector(unsigned short x, unsigned short y) const {
-		return vectors[y * FF_MAP_HEIGHT + x];
+	VectorT getVector(unsigned short x, unsigned short y) const {
+		return vectors[mapCoordinateToArrayIndex(x, y)];
 	}
 };
 
+// Cost fields for ground, hover and lift movement types
+std::array<std::unique_ptr<CostField>, 4> costFields {
+	std::unique_ptr<CostField>(new CostField()),
+	std::unique_ptr<CostField>(new CostField()),
+	std::unique_ptr<CostField>(new CostField()),
+	std::unique_ptr<CostField>(new CostField()),
+};
+
+// Flow field cache for ground, hover and lift movement types
 std::array<std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>, 4> flowfieldCache {
 	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
 	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
@@ -370,7 +390,6 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	printf("### Process flowfield from (%i, %i) to (%i, %i)\n", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y);
 
-	auto& sectors = costFields[propulsionToIndex.at(request.propulsion)];
 	auto& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(request.propulsion)];
 
 	Vector2i localStartPoint = request.mapSource;
@@ -414,18 +433,14 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 	printf("Finished processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 }
 
-unsigned int pointToMapIndex(Vector2i p) {
-	return p.y * FF_MAP_WIDTH + p.x;
-}
-
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField);
 
 void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
-	// TODO: split NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
+	// TODO: split COST_NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < mapWidth; x++) {
 		for (unsigned int y = 0; y < mapHeight; y++) {
-			integrationField->setTile(x, y, NOT_PASSABLE);
+			integrationField->setCost(x, y, COST_NOT_PASSABLE);
 		}
 	}
 
@@ -434,7 +449,7 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	std::priority_queue<Node> openSet;
 
 	for (auto& point : points) {
-		openSet.push({ 0, pointToMapIndex(point) });
+		openSet.push({ 0, point.y * FF_MAP_WIDTH + point.x });
 	}
 
 	while (!openSet.empty()) {
@@ -443,22 +458,42 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	}
 }
 
-Vector2i indexToMapPoint(unsigned int index) {
-	const unsigned int y = index / FF_MAP_WIDTH;
-	const unsigned int x = index % FF_MAP_WIDTH;
+std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center) {
+	std::vector<unsigned int> neighbors;
+
+	for (int y = -1; y <= 1; y++) {
+		const int realY = center.y + y;
+		for (int x = -1; x <= 1; x++) {
+			const int realX = center.x + x;
+			if ((y == 0 && x == 0) || realY < 0 || realX < 0 || realY >= mapHeight || realX >= mapWidth) {
+				// Skip self and out-of-map
+				continue;
+			}
+
+			if (costField->getCost(x, y) != COST_NOT_PASSABLE) {
+				neighbors.push_back(mapCoordinateToArrayIndex(x, y));
+			}
+		}
+	}
+
+	return neighbors;
+}
+
+Vector2i getPointByTileIndex(unsigned int index) {
+	const unsigned int y = index / mapWidth;
+	const unsigned int x = index % mapWidth;
 	return Vector2i { x, y };
 }
 
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField) {
 	const Node& node = openSet.top();
-	Vector2i nodePoint = indexToMapPoint(node.index);
-	Tile nodeTile = sector->getTile(nodePoint);
+	auto cost = costField->getCost(node.index);
 
-	if (nodeTile.isBlocking()) {
+	if (cost == COST_NOT_PASSABLE) {
 		return;
 	}
 
-	unsigned short nodeCostFromCostField = nodeTile.cost;
+	unsigned short nodeCostFromCostField = cost;
 
 	// Go to the goal, no matter what
 	if (node.predecessorCost == 0) {
@@ -466,24 +501,22 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationFie
 	}
 
 	const unsigned short newCost = node.predecessorCost + nodeCostFromCostField;
-	const unsigned short nodeOldCost = integrationField->getTile(nodePoint).cost;
+	const unsigned short nodeOldCost = integrationField->getCost(node.index);
 
 	if (newCost < nodeOldCost) {
-		Tile tile;
-		tile.cost = newCost;
-		integrationField->setTile(nodePoint, tile);
+		integrationField->setCost(node.index, newCost);
 
-		for (unsigned int neighbor : AbstractSector::getNeighbors(sectors, nodePoint)) {
+		for (unsigned int neighbor : getTraversableAdjacentTiles(getPointByTileIndex(node.index))) {
 			openSet.push({ newCost, neighbor });
 		}
 	}
 }
 
-unsigned short getCostOrElse(IntegrationField* integrationField, Vector2i coords, unsigned short elseCost) {
-	const auto cost = integrationField->getTile(coords.x, coords.y);
+unsigned short getCostOrDefault(IntegrationField* integrationField, Vector2i coords, unsigned short defaultCost) {
+	const auto cost = integrationField->getCost(coords.x, coords.y);
 	
-	if (cost == NOT_PASSABLE) {
-		return elseCost * OBSTACLE_AVOIDANCE_COEFF;
+	if (cost == COST_NOT_PASSABLE) {
+		return defaultCost * OBSTACLE_AVOIDANCE_COEFF;
 	}
 
 	return cost;
@@ -492,22 +525,22 @@ unsigned short getCostOrElse(IntegrationField* integrationField, Vector2i coords
 void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField) {
 	for (int y = 0; y < mapHeight; y++) {
 		for (int x = 0; x < mapWidth; x++) {
-			const auto cost = integrationField->getTile(x, y);
-			if (cost == NOT_PASSABLE || cost == COST_MIN) {
+			const auto cost = integrationField->getCost(x, y);
+			if (cost == COST_NOT_PASSABLE || cost == COST_MIN) {
 				// Skip goal and non-passable
 				// TODO: probably 0.0 should be only for actual goals, not intermediate goals when crossing sectors
-				flowField->setVector(p, VectorT { 0.0f, 0.0f });
+				flowField->setVector(x, y, VectorT { 0.0f, 0.0f });
 				continue;
 			}
 
 			// Use current tile cost when no cost available.
 			// This will either keep the vector horizontal or vertical, or turn away from higher-cost neighbor
 			// NOTICE: Flow field on sector borders might be not optimal
-			const unsigned short leftCost = getCostOrElse(integrationField, {x - 1, y}, tile.cost);
-			const unsigned short rightCost = getCostOrElse(integrationField, {x + 1, y}, tile.cost);
+			const unsigned short leftCost = getCostOrDefault(integrationField, {x - 1, y}, cost);
+			const unsigned short rightCost = getCostOrDefault(integrationField, {x + 1, y}, cost);
 
-			const unsigned short topCost = getCostOrElse(integrationField, {x, y - 1}, tile.cost);
-			const unsigned short bottomCost = getCostOrElse(integrationField, {x, y + 1}, tile.cost);
+			const unsigned short topCost = getCostOrDefault(integrationField, {x, y - 1}, cost);
+			const unsigned short bottomCost = getCostOrDefault(integrationField, {x, y + 1}, cost);
 
 			VectorT vector;
 			vector.x = leftCost - rightCost;
@@ -520,46 +553,44 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 				vector.y = 0.1f;
 			}
 
-			flowField->setVector(p, vector);
+			flowField->setVector(x, y, vector);
 		}
 	}
 }
 
-void initCostFields()
+unsigned short getTileCost(unsigned short x, unsigned short y, PROPULSION_TYPE propulsion)
 {
-	numSectorsHorizontal = ceil(mapWidth * 1.f / SECTOR_SIZE);
-	numSectorsVertical = ceil(mapHeight * 1.f / SECTOR_SIZE);
-	numSectors = numSectorsHorizontal * numSectorsVertical;
-	
-	// Reserve and fill cost fields with empty sectors
-	for (auto& sectors : costFields)
+	// TODO: Current impl forbids VTOL from flying over short buildings
+	if (!fpathBlockingTile(x, y, propulsion))
 	{
-		sectors.reserve(numSectors);
+		int pMax, pMin;
+		getTileMaxMin(x, y, &pMax, &pMin);
 
-		for(auto y = 0; y < numSectorsVertical; y++){
-			for(auto x = 0; x < numSectorsHorizontal; x++){
-				auto sector = new Sector();
-				sector->position = { x * SECTOR_SIZE, y * SECTOR_SIZE };
-				sectors.push_back(std::unique_ptr<Sector>(sector));
-			}
+		const auto delta = static_cast<unsigned short>(pMax - pMin);
+
+		if (propulsion != PROPULSION_TYPE_LIFT && delta > SLOPE_THRESOLD)
+		{
+			// Yes, the cost is integer and we do not care about floating point tail
+			return std::max(COST_MIN, static_cast<unsigned short>(SLOPE_COST_BASE * delta));
+		}
+		else
+		{
+			return COST_MIN;
 		}
 	}
 
-	numHorizontalTiles = numSectorsHorizontal * SECTOR_SIZE;
-	numVerticalTiles = numSectorsVertical * SECTOR_SIZE;
-	
-	// Fill tiles in sectors
-	for (int x = 0; x < numHorizontalTiles; x++)
-	{
-		for (int y = 0; y < numVerticalTiles; y++)
-		{
-			Vector2i p = {x, y};
-			const unsigned int sectorId = Sector::getIdByCoords(p);
+	return COST_NOT_PASSABLE;
+}
 
+void initCostFields()
+{
+	for (int x = 0; x < mapWidth; x++)
+	{
+		for (int y = 0; y < mapHeight; y++)
+		{
 			for (auto&& propType : propulsionToIndexUnique)
 			{
-				const Tile groundTile = createTile(p, propType.first);
-				costFields[propType.second][sectorId]->setTile(p, groundTile);
+				costFields[propType.second]->setCost(x, y, getTileCost(x, y, propType.first));
 			}
 		}
 	}
@@ -567,54 +598,13 @@ void initCostFields()
 
 void destroyCostFields()
 {
-	for (auto& sectors : costFields)
-	{
-		sectors.clear();
-	}
-}
-
-void destroyPortals()
-{
-	for (auto& portal : portalArr)
-	{
-		portal.clear();
-	}
+	// ?
 }
 
 void destroyFlowfieldCache() {
 	for (auto&& pair : propulsionToIndexUnique) {
-		portalPathCache[pair.second]->clear();
 		flowfieldCache[pair.second]->clear();
 	}
-}
-
-Tile createTile(Vector2i p, PROPULSION_TYPE propulsion)
-{
-	unsigned short cost = NOT_PASSABLE;
-	const bool isBlocking = fpathBlockingTile(p.x, p.y, propulsion);
-
-	// TODO: Current impl forbids VTOL from flying over short buildings
-	if (!isBlocking)
-	{
-		int pMax, pMin;
-		getTileMaxMin(p.x, p.y, &pMax, &pMin);
-
-		const auto delta = static_cast<unsigned short>(pMax - pMin);
-
-		if (propulsion != PROPULSION_TYPE_LIFT && delta > SLOPE_THRESOLD)
-		{
-			// Yes, the cost is integer and we do not care about floating point tail
-			cost = std::max(COST_MIN, static_cast<unsigned short>(SLOPE_COST_BASE * delta));
-		}
-		else
-		{
-			cost = COST_MIN;
-		}
-	}
-
-	Tile tile;
-	tile.cost = cost;
-	return tile;
 }
 
 std::deque<unsigned int> getFlowfieldPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
@@ -702,7 +692,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 			pie_RotateProject(&a, mvp, &b);
 			auto cost = sector->getTile({x, z}).cost;
-			if(cost != NOT_PASSABLE){
+			if(cost != COST_NOT_PASSABLE){
 				WzText costText(std::to_string(cost), font_medium);
 				costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
 			}
