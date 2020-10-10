@@ -42,8 +42,8 @@ bool isFlowfieldEnabled();
 void flowfieldInit();
 void flowfieldDestroy();
 
-bool tryGetFlowfieldForTarget(unsigned int sourceX, unsigned int sourceY, unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion, unsigned int &flowfieldId);
-void calculateFlowfieldAsync(int startX, int startY, int targetX, int targetY, PROPULSION_TYPE propulsion);
+bool tryGetFlowfieldForTarget(unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion, unsigned int &flowfieldId);
+void calculateFlowfieldAsync(unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion);
 
 void debugDrawFlowfields(const glm::mat4 &mvp);
 

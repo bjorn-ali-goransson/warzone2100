@@ -104,10 +104,8 @@ void destroyflowfieldCaches();
 
 struct FLOWFIELDREQUEST
 {
-	/// Source position
-	Vector2i mapSource;
 	/// Target position
-	Vector2i mapGoal;
+	Vector2i goal;
 	PROPULSION_TYPE propulsion;
 };
 
@@ -151,13 +149,11 @@ static std::list<wz::packaged_task<FLOWFIELDREQUEST()>>    flowfieldRequests;
 
 void processFlowfield(FLOWFIELDREQUEST request);
 
-void calculateFlowfieldsAsync(int startX, int startY, int targetX, int targetY, PROPULSION_TYPE propulsion) {
-	Vector2i source { map_coord(startX), map_coord(startY) };
+void calculateFlowfieldAsync(unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion) {
 	Vector2i goal { map_coord(targetX), map_coord(targetY) };
 
 	FLOWFIELDREQUEST request;
-	request.mapSource = source;
-	request.mapGoal = goal;
+	request.goal = goal;
 	request.propulsion = propulsion;
 
 	wz::packaged_task<FLOWFIELDREQUEST()> requestTask([request]() { processFlowfield(request); return request; });
@@ -316,7 +312,10 @@ struct VectorT {
 	}
 };
 
+unsigned int flowfieldIdIncrementor = 0;
+
 struct Flowfield {
+	unsigned int id;
 	std::array<VectorT, FF_MAP_AREA> vectors;
 
 	void setVector(unsigned short x, unsigned short y, VectorT vector) {
@@ -343,6 +342,20 @@ std::array<std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique
 	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>())
 };
 
+bool tryGetFlowfieldForTarget(unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion, unsigned int &flowfieldId){
+	auto& flowfieldCache = *flowfieldCaches[propulsionToIndex.at(propulsion)];
+
+	if(!flowfieldCache.count({ { (int)targetX, (int)targetY } })){
+		return false;
+	}
+
+	auto& flowfield = *flowfieldCache[{ { (int)targetX, (int)targetY } }];
+
+	flowfieldId = flowfield.id;
+
+	return true;
+}
+
 struct Node {
 	unsigned short predecessorCost;
 	unsigned int index;
@@ -362,7 +375,7 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
-	printf("### Process flowfield from (%i, %i) to (%i, %i)\n", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y);
+	printf("### Process flowfield from to (%i, %i)\n", request.goal.x, request.goal.y);
 
 	auto& flowfieldCache = *flowfieldCaches[propulsionToIndex.at(request.propulsion)];
 
@@ -371,7 +384,7 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 
 	// TODO: multiple goals for formations
-	std::vector<ComparableVector2i> finalGoals { request.mapGoal };
+	std::vector<ComparableVector2i> finalGoals { request.goal };
 
 	if (flowfieldCache.count(finalGoals)) {
 		printf("Found cached flowfield [%i] (%i, %i)\n", (int)finalGoals.size(), finalGoals[0].x, finalGoals[0].y);
@@ -392,6 +405,7 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 	printf("Finished processing integration field (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 
 	Flowfield* flowField = new Flowfield();
+	flowField->id = flowfieldIdIncrementor++;
 	calculateFlowfield(flowField, integrationField);
 
 	{
@@ -433,7 +447,7 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 
 std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center) {
 	std::vector<unsigned int> neighbors;
-
+	
 	for (int y = -1; y <= 1; y++) {
 		const int realY = center.y + y;
 		for (int x = -1; x <= 1; x++) {
@@ -443,11 +457,13 @@ std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center) {
 				continue;
 			}
 
-			if (costField->getCost(x, y) != COST_NOT_PASSABLE) {
-				neighbors.push_back(mapCoordinateToArrayIndex(x, y));
+			if (costField->getCost(realX, realY) != COST_NOT_PASSABLE) {
+				neighbors.push_back(mapCoordinateToArrayIndex(realX, realY));
 			}
 		}
 	}
+
+
 
 	return neighbors;
 }
@@ -698,6 +714,8 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 		}
 	}
 }
+
+#define VECTOR_FIELD_DEBUG 1
 
 void debugDrawFlowfields(const glm::mat4 &mvp) {
 	if (!isFlowfieldEnabled()) return;

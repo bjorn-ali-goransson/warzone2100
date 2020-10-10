@@ -453,17 +453,16 @@ FPATH_RETVAL fpathDroidRoute(DROID *psDroid, SDWORD tX, SDWORD tY, FPATH_MOVETYP
 	if (isFlowfieldEnabled()) {
 		unsigned int flowfieldId;
 		
-		if(tryGetFlowfieldForTarget(startPos.x, startPos.y, tX, tY, psPropStats->propulsionType, flowfieldId))
+		if(tryGetFlowfieldForTarget(tX, tY, psPropStats->propulsionType, flowfieldId))
 		{
 			printf("was cached!\n");
 			psDroid->sMove.pathIndex = 0;
 			psDroid->sMove.Status = MOVENAVIGATE;
 			psDroid->sMove.asPath = { { tX, tY } };
 
-			printf("Got a portal path to (%d, %d)! Length=%d\n", psDroid->sMove.destination.x, psDroid->sMove.destination.y, static_cast<int>(psDroid->sMove.portalPath.size()));
 			return FPR_OK;
 		} else {
-			calculateFlowfieldAsync(startPos.x, startPos.y, endPos.x, endPos.y, psPropStats->propulsionType);
+			calculateFlowfieldAsync(tX, tY, psPropStats->propulsionType);
 			return FPR_WAIT;
 		}
 	}
