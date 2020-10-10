@@ -313,6 +313,7 @@ struct VectorT {
 };
 
 unsigned int flowfieldIdIncrementor = 0;
+IntegrationField* latestIntegrationField = nullptr;
 
 struct Flowfield {
 	unsigned int id;
@@ -401,11 +402,13 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 	printf("Processing flowfield [%i] (%i, %i)\n", (int)finalGoals.size(), finalGoals[0].x, finalGoals[0].y);
 
 	IntegrationField* integrationField = new IntegrationField();
+	latestIntegrationField = integrationField;
 	calculateIntegrationField(finalGoals, integrationField);
 	printf("Finished processing integration field (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
 
 	Flowfield* flowField = new Flowfield();
 	flowField->id = flowfieldIdIncrementor++;
+
 	calculateFlowfield(flowField, integrationField);
 
 	{
@@ -639,13 +642,13 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 			// cost
 
-			const Vector3i a = { (XA + XB) / 2, height, -(ZA + ZB) / 2 };
+			const Vector3i a = { (XA + 20), height, -(ZA + 20) };
 			Vector2i b;
 
 			pie_RotateProject(&a, mvp, &b);
 			auto cost = costField->getCost(x, z);
 			if(cost != COST_NOT_PASSABLE){
-				WzText costText(std::to_string(cost), font_medium);
+				WzText costText(std::to_string(cost), font_small);
 				costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
 			}
 
@@ -660,6 +663,18 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				pie_RotateProject(&positionText3dCoords, mvp, &positionText2dCoords);
 				WzText positionText(positionString, font_small);
 				positionText.render(positionText2dCoords.x, positionText2dCoords.y, WZCOL_LBLUE);
+			}
+
+			// integration fields
+
+			if(latestIntegrationField != nullptr){
+				const Vector3i integrationFieldText3dCoordinates = { (XA + 20), height, -(ZA + 40) };
+				Vector2i integrationFieldText2dCoordinates;
+
+				pie_RotateProject(&integrationFieldText3dCoordinates, mvp, &integrationFieldText2dCoordinates);
+				auto cost = latestIntegrationField->getCost(x, z);
+				WzText costText(std::to_string(cost), font_small);
+				costText.render(integrationFieldText2dCoordinates.x, integrationFieldText2dCoordinates.y, WZCOL_TEXT_BRIGHT);
 			}
 
 			// flowfields
@@ -691,7 +706,6 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 					{ startPointX, portalHeight + 10, -startPointY },
 					{ startPointX + vector.x * 75, portalHeight + 10, -startPointY - vector.y * 75 },
 				}, mvp, WZCOL_WHITE);
-				
 			}
 	 	}
 	}
