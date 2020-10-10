@@ -661,21 +661,17 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				WzText positionText(positionString, font_small);
 				positionText.render(positionText2dCoords.x, positionText2dCoords.y, WZCOL_LBLUE);
 			}
-	 	}
-	}
 
-	// flowfields
+			// flowfields
 
-	auto cache = flowfieldCaches[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
+			auto cache = flowfieldCaches[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
 
-	for (auto const& cacheEntry: *cache) {
-		auto& flowfield = cacheEntry.second;
-		for (int y = 0; y < mapWidth; y++) {
-			for (int x = 0; x < mapHeight; x++) {
-				auto vector = flowfield->getVector(x, y);
+			for (auto const& cacheEntry: *cache) {
+				auto& flowfield = cacheEntry.second;
+				auto vector = flowfield->getVector(x, z);
 				
-				auto startPointX = world_coord(x) + FF_TILE_SIZE / 2;
-				auto startPointY = world_coord(y) + FF_TILE_SIZE / 2;
+				auto startPointX = XA + FF_TILE_SIZE / 2;
+				auto startPointY = ZA + FF_TILE_SIZE / 2;
 
 				auto portalHeight = map_TileHeight(startPointX, startPointY);
 
@@ -695,9 +691,16 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 					{ startPointX, portalHeight + 10, -startPointY },
 					{ startPointX + vector.x * 75, portalHeight + 10, -startPointY - vector.y * 75 },
 				}, mvp, WZCOL_WHITE);
+				
 			}
-		}
-		
+	 	}
+	}
+
+	// flowfields
+
+	auto cache = flowfieldCaches[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
+
+	for (auto const& cacheEntry: *cache) {
 		// goal
 
 		for (auto&& goal : cacheEntry.first) {
