@@ -98,22 +98,9 @@ constexpr const unsigned short FLOWFIELD_CACHE_MAX = 8096;
 */
 constexpr const float OBSTACLE_AVOIDANCE_COEFF = 1.5f;
 
-struct Tile {
-	unsigned short cost = COST_MIN;
-	bool Tile::isBlocking() const
-	{
-		return cost == COST_NOT_PASSABLE;
-	}
-};
-
 void initCostFields();
 void destroyCostFields();
-void destroyFlowfieldCache();
-
-Tile createTile(Vector2i p, PROPULSION_TYPE propulsion);
-
-std::deque<unsigned int> getFlowfieldPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion);
-Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, PROPULSION_TYPE propulsion);
+void destroyflowfieldCaches();
 
 struct FLOWFIELDREQUEST
 {
@@ -140,20 +127,7 @@ void flowfieldDestroy() {
 	if (!isFlowfieldEnabled()) return;
 
 	destroyCostFields();
-	destroyFlowfieldCache();
-}
-
-std::deque<unsigned int> getFlowfieldPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, const PROPULSION_TYPE propulsion) {
-	Vector2i source { map_coord(startX), map_coord(startY) };
-	Vector2i goal { map_coord(tX), map_coord(tY) };
-	
-	unsigned int sourcePortalId, goalPortalId;
-
-	return getFlowfieldPathFromCache(sourcePortalId, goalPortalId, propulsion);
-}
-
-Vector2f getMovementVector(unsigned int nextPortalId, unsigned currentX, unsigned currentY, PROPULSION_TYPE propulsion) {
-	return getMovementVector(nextPortalId, { currentX, currentY }, propulsion);
+	destroyflowfieldCaches();
 }
 
 std::vector<ComparableVector2i> toComparableVectors(std::vector<Vector2i> values){
@@ -186,7 +160,7 @@ void calculateFlowfieldsAsync(int startX, int startY, int targetX, int targetY, 
 	request.mapGoal = goal;
 	request.propulsion = propulsion;
 
-	wz::packaged_task<FLOWFIELDREQUEST()> requestTask([request]() { return processFlowfield(request); });
+	wz::packaged_task<FLOWFIELDREQUEST()> requestTask([request]() { processFlowfield(request); return request; });
 
 	wzMutexLock(ffpathMutex);
 	bool isFirstRequest = flowfieldRequests.empty();
@@ -294,7 +268,7 @@ std::mutex flowfieldMutex;
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-inline int mapCoordinateToArrayIndex(unsigned short x, unsigned short y) { return y * FF_MAP_HEIGHT + x; }
+inline unsigned int mapCoordinateToArrayIndex(unsigned short x, unsigned short y) { return y * FF_MAP_HEIGHT + x; }
 
 struct IntegrationField {
 	unsigned short cost[FF_MAP_AREA];
@@ -362,7 +336,7 @@ std::array<std::unique_ptr<CostField>, 4> costFields {
 };
 
 // Flow field cache for ground, hover and lift movement types
-std::array<std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>, 4> flowfieldCache {
+std::array<std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>, 4> flowfieldCaches {
 	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
 	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
 	std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>>(new std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>()),
@@ -390,9 +364,8 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	printf("### Process flowfield from (%i, %i) to (%i, %i)\n", request.mapSource.x, request.mapSource.y, request.mapGoal.x, request.mapGoal.y);
 
-	auto& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(request.propulsion)];
+	auto& flowfieldCache = *flowfieldCaches[propulsionToIndex.at(request.propulsion)];
 
-	Vector2i localStartPoint = request.mapSource;
 
 
 
@@ -400,7 +373,7 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 	// TODO: multiple goals for formations
 	std::vector<ComparableVector2i> finalGoals { request.mapGoal };
 
-	if (localFlowfieldCache.count(finalGoals)) {
+	if (flowfieldCache.count(finalGoals)) {
 		printf("Found cached flowfield [%i] (%i, %i)\n", (int)finalGoals.size(), finalGoals[0].x, finalGoals[0].y);
 		return;
 	}
@@ -423,7 +396,7 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
-		auto cache = flowfieldCache[propulsionToIndex.at(request.propulsion)].get();
+		auto cache = flowfieldCaches[propulsionToIndex.at(request.propulsion)].get();
 
 		printf("Inserting (%i, %i)[+%i] into cache\n", finalGoals[0].x, finalGoals[0].y, (int)finalGoals.size() - 1);
 
@@ -449,7 +422,7 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	std::priority_queue<Node> openSet;
 
 	for (auto& point : points) {
-		openSet.push({ 0, point.y * FF_MAP_WIDTH + point.x });
+		openSet.push({ 0, (unsigned int)(point.y * FF_MAP_WIDTH + point.x) });
 	}
 
 	while (!openSet.empty()) {
@@ -558,7 +531,7 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 	}
 }
 
-unsigned short getTileCost(unsigned short x, unsigned short y, PROPULSION_TYPE propulsion)
+unsigned short calculateTileCost(unsigned short x, unsigned short y, PROPULSION_TYPE propulsion)
 {
 	// TODO: Current impl forbids VTOL from flying over short buildings
 	if (!fpathBlockingTile(x, y, propulsion))
@@ -590,7 +563,7 @@ void initCostFields()
 		{
 			for (auto&& propType : propulsionToIndexUnique)
 			{
-				costFields[propType.second]->setCost(x, y, getTileCost(x, y, propType.first));
+				costFields[propType.second]->setCost(x, y, calculateTileCost(x, y, propType.first));
 			}
 		}
 	}
@@ -601,39 +574,10 @@ void destroyCostFields()
 	// ?
 }
 
-void destroyFlowfieldCache() {
+void destroyflowfieldCaches() {
 	for (auto&& pair : propulsionToIndexUnique) {
-		flowfieldCache[pair.second]->clear();
+		flowfieldCaches[pair.second]->clear();
 	}
-}
-
-std::deque<unsigned int> getFlowfieldPathFromCache(unsigned int sourcePortalId, unsigned int goalPortalId, PROPULSION_TYPE propulsion) {
-	std::lock_guard<std::mutex> lock(portalPathMutex);
-	auto& localPortalPathCache = *portalPathCache[propulsionToIndex.at(propulsion)];
-
-	if(localPortalPathCache.count({sourcePortalId, goalPortalId}) == 0){
-		return std::deque<unsigned int> {};
-	}
-
-	return localPortalPathCache.find({sourcePortalId, goalPortalId})->second;
-}
-
-Vector2f getMovementVector(unsigned int nextPortalId, Vector2i currentPosition, PROPULSION_TYPE propulsion) {
-	auto&& portals = portalArr[propulsionToIndex.at(propulsion)];
-	const Portal& nextPortal = portals.at(nextPortalId);
-	std::vector<ComparableVector2i> goals = portalToGoals(nextPortal, currentPosition);
-
-	std::lock_guard<std::mutex> lock(flowfieldMutex);
-	std::map<std::vector<ComparableVector2i>, std::unique_ptr<Flowfield>>& localFlowfieldCache = *flowfieldCache[propulsionToIndex.at(propulsion)];
-
-	if(localFlowfieldCache.count(goals) == 0){
-		// (0,0) vector considered invalid
-		return { 0.0f, 0.0f };
-	}
-
-	VectorT vector = localFlowfieldCache.find(goals)->second->getVector(currentPosition);
-
-	return { vector.x, vector.y };
 }
 
 void debugDrawFlowfield(const glm::mat4 &mvp) {
@@ -642,9 +586,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 	const auto playerXTile = map_coord(player.p.x);
 	const auto playerZTile = map_coord(player.p.z);
 	
-	const auto& groundSectors = costFields[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
-
-	std::map<unsigned int, bool> sectorsInView;
+	const auto& costField = costFields[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)];
 
 	for (auto deltaX = -6; deltaX <= 6; deltaX++)
 	{
@@ -660,12 +602,6 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 			if(z < 0){
 				continue;
-			}
-
-			auto sectorId = AbstractSector::getIdByCoords({x, z});
-			auto sector = groundSectors[sectorId].get();
-			if(!sectorsInView.count(sectorId)){
-				sectorsInView[sectorId] = true;
 			}
 
 			const float XA = world_coord(x);
@@ -691,7 +627,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			Vector2i b;
 
 			pie_RotateProject(&a, mvp, &b);
-			auto cost = sector->getTile({x, z}).cost;
+			auto cost = costField->getCost(x, z);
 			if(cost != COST_NOT_PASSABLE){
 				WzText costText(std::to_string(cost), font_medium);
 				costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
@@ -714,18 +650,16 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 	// flowfields
 
-	auto cache = flowfieldCache[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
+	auto cache = flowfieldCaches[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
 
 	for (auto const& cacheEntry: *cache) {
-		auto sector = groundSectors[cacheEntry.second->sectorId].get();
-		
 		auto& flowfield = cacheEntry.second;
-		for (int y = 0; y < SECTOR_SIZE; y++) {
-			for (int x = 0; x < SECTOR_SIZE; x++) {
-				auto vector = flowfield->getVector({x, y});
+		for (int y = 0; y < mapWidth; y++) {
+			for (int x = 0; x < mapHeight; x++) {
+				auto vector = flowfield->getVector(x, y);
 				
-				auto startPointX = world_coord(sector->position.x + x) + FF_TILE_SIZE / 2;
-				auto startPointY = world_coord(sector->position.y + y) + FF_TILE_SIZE / 2;
+				auto startPointX = world_coord(x) + FF_TILE_SIZE / 2;
+				auto startPointY = world_coord(y) + FF_TILE_SIZE / 2;
 
 				auto portalHeight = map_TileHeight(startPointX, startPointY);
 

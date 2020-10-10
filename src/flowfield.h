@@ -36,41 +36,16 @@
 // TODO: maybe prefer visible tiles, or just discovered tiles (for player)
 // Both things would go into integration field probably. Note that adding visibility stuff would quickly require most integration and flow fields to be thrown away, since visibility changes all the time.
 
-// TODO: support marking sectors as dirty: portals needs to be rebuild, cost fields recalculated, and integration and flow fields for that sector must be removed from cache.
-
-// TODO: disable before merge with main branch
-constexpr const bool DEBUG_BUILD = true;
-
-// FEEL FREE TO DISABLE THOSE AS THEY OBSCURE THE VIEW
-constexpr const bool PORTALS_DEBUG = true;
-constexpr const bool VECTOR_FIELD_DEBUG = true;
-constexpr const bool DEBUG_A_STAR = true;
-constexpr const bool DEBUG_THREAD_POOL = true;
-
 void flowfieldEnable();
 bool isFlowfieldEnabled();
 
 void flowfieldInit();
 void flowfieldDestroy();
 
-/**
- * Public interface same as fpathRoute for compatibility.
- * Most fields are not yet used in current flowfield implementation, but I wanted it to be compatible with fpath.cpp
- */
-void calculateFlowfieldsAsync(int startX, int startY, int targetX, int targetY, PROPULSION_TYPE propulsion);
-
-std::deque<unsigned int> getFlowfieldPathFromCache(unsigned startX, unsigned startY, unsigned tX, unsigned tY, PROPULSION_TYPE propulsion);
-
-Vector2f getFlowfieldMovementVector(unsigned int nextPortalId, unsigned currentX, unsigned currentY, PROPULSION_TYPE propulsion);
-
-std::vector<Vector2i> flowfieldPortalPathToCoordsPath(const std::deque<unsigned int>& path, DROID* psDroid);
+bool tryGetFlowfieldForTarget(unsigned int sourceX, unsigned int sourceY, unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion, unsigned int &flowfieldId);
+void calculateFlowfieldAsync(int startX, int startY, int targetX, int targetY, PROPULSION_TYPE propulsion);
 
 void debugDrawFlowfields(const glm::mat4 &mvp);
 
-/** Initialise the path-finding module.
- */
 bool ffpathInitialise();
-
-/** Shutdown the path-finding module.
- */
 void ffpathShutdown();
