@@ -368,9 +368,7 @@ struct Node {
 	}
 };
 
-std::unique_ptr<CostField> costField = std::unique_ptr<CostField>(new CostField());
-
-void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField);
+void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField, CostField* costField);
 void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField);
 
 void processFlowfield(FLOWFIELDREQUEST request) {
@@ -379,7 +377,8 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	printf("### Process flowfield from to (%i, %i)\n", request.goal.x, request.goal.y);
 
-	auto& flowfieldCache = *flowfieldCaches[propulsionToIndex.at(request.propulsion)];
+	const auto& flowfieldCache = *flowfieldCaches[propulsionToIndex.at(request.propulsion)];
+	const auto& costField = costFields[propulsionToIndex.at(request.propulsion)].get();
 
 
 
@@ -404,7 +403,7 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	IntegrationField* integrationField = new IntegrationField();
 	latestIntegrationField = integrationField;
-	calculateIntegrationField(goals, integrationField);
+	calculateIntegrationField(goals, integrationField, costField);
 	printf("Finished processing integration field (%i, %i)\n", goals[0].x, goals[0].y);
 
 	Flowfield* flowField = new Flowfield();
@@ -424,9 +423,9 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 	printf("Finished processing flowfield (%i, %i)\n", goals[0].x, goals[0].y);
 }
 
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField);
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField);
 
-void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField) {
+void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField, CostField* costField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
 	// TODO: split COST_NOT_PASSABLE into a few constants, for terrain, buildings and maybe sth else
 	for (unsigned int x = 0; x < mapWidth; x++) {
@@ -444,12 +443,12 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	}
 
 	while (!openSet.empty()) {
-		integrateFlowfieldPoints(openSet, integrationField);
+		integrateFlowfieldPoints(openSet, integrationField, costField);
 		openSet.pop();
 	}
 }
 
-std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center) {
+std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center, CostField* costField) {
 	std::vector<unsigned int> neighbors;
 	
 	for (int yOffset = -1; yOffset <= 1; yOffset++) {
@@ -470,33 +469,31 @@ std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center) {
 	return neighbors;
 }
 
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField) {
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField) {
 	const Node& node = openSet.top();
 	auto cost = costField->getCost(node.index);
 
 	auto p = arrayIndexToCoordinate(node.index);
 
-	printf("Cost of (%i, %i): %i\n", p.x, p.y, cost);
-
 	if (cost == COST_NOT_PASSABLE) {
 		return;
 	}
 
-	unsigned short nodeCostFromCostField = cost;
-
 	// Go to the goal, no matter what
 	if (node.predecessorCost == 0) {
-		nodeCostFromCostField = COST_MIN;
+		cost = COST_MIN;
 	}
 
-	const unsigned short newCost = node.predecessorCost + nodeCostFromCostField;
-	const unsigned short nodeOldCost = integrationField->getCost(node.index);
+	const unsigned short integrationCost = node.predecessorCost + cost;
+	const unsigned short oldIntegrationCost = integrationField->getCost(node.index);
 
-	if (newCost < nodeOldCost) {
-		integrationField->setCost(node.index, newCost);
+	printf("(%i, %i) (%i) = %i --- %i\n", p.x, p.y, cost, oldIntegrationCost, integrationCost);
 
-		for (unsigned int neighbor : getTraversableAdjacentTiles(arrayIndexToCoordinate(node.index))) {
-			openSet.push({ newCost, neighbor });
+	if (integrationCost < oldIntegrationCost) {
+		integrationField->setCost(node.index, integrationCost);
+
+		for (unsigned int neighbor : getTraversableAdjacentTiles(arrayIndexToCoordinate(node.index), costField)) {
+			openSet.push({ integrationCost, neighbor });
 		}
 	}
 }
@@ -579,7 +576,8 @@ void initCostFields()
 		{
 			for (auto&& propType : propulsionToIndexUnique)
 			{
-				costFields[propType.second]->setCost(x, y, calculateTileCost(x, y, propType.first));
+				auto cost = calculateTileCost(x, y, propType.first);
+				costFields[propType.second]->setCost(x, y, cost);
 			}
 		}
 	}
@@ -648,7 +646,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 				WzText costText(std::to_string(cost), font_small);
 				costText.render(b.x, b.y, WZCOL_TEXT_BRIGHT);
 			}
-
+			
 			// position
 
 			if(x < 999 && z < 999){
