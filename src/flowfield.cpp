@@ -375,49 +375,28 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
-	printf("### Process flowfield from to (%i, %i)\n", request.goal.x, request.goal.y);
-
-	const auto& flowfieldCache = *flowfieldCaches[propulsionToIndex.at(request.propulsion)];
+	const auto& flowfieldCache = flowfieldCaches[propulsionToIndex.at(request.propulsion)].get();
 	const auto& costField = costFields[propulsionToIndex.at(request.propulsion)].get();
 
+	std::vector<ComparableVector2i> goals { request.goal }; // TODO: multiple goals for formations
 
-
-
-
-	// TODO: multiple goals for formations
-	std::vector<ComparableVector2i> goals { request.goal };
-
-	if (flowfieldCache.count(goals)) {
-		printf("Found cached flowfield [%i] (%i, %i)\n", (int)goals.size(), goals[0].x, goals[0].y);
+ 	// this check is already done in fpath.cpp.
+	// TODO: we should perhaps refresh the flowfield instead of bailing here.
+	if (flowfieldCache->count(goals)) {
 		return;
 	}
 
-
-
-
-
-
-
-
-	printf("Processing flowfield [%i] (%i, %i)\n", (int)goals.size(), goals[0].x, goals[0].y);
-
 	IntegrationField* integrationField = new IntegrationField();
 	latestIntegrationField = integrationField;
-	calculateIntegrationField(goals, integrationField, costField);
-	printf("Finished processing integration field (%i, %i)\n", goals[0].x, goals[0].y);
+	calculateIntegrationField(goals, integrationField, costField); // TODO: measure time
 
 	Flowfield* flowField = new Flowfield();
 	flowField->id = flowfieldIdIncrementor++;
-
-	calculateFlowfield(flowField, integrationField);
+	calculateFlowfield(flowField, integrationField); // TODO: measure time
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
-		auto cache = flowfieldCaches[propulsionToIndex.at(request.propulsion)].get();
-
-		printf("Inserting (%i, %i)[+%i] into cache\n", goals[0].x, goals[0].y, (int)goals.size() - 1);
-
-		cache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
+		flowfieldCache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
 	}
 
 	printf("Finished processing flowfield (%i, %i)\n", goals[0].x, goals[0].y);
