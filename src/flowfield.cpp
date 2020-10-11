@@ -398,8 +398,6 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
 		flowfieldCache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
 	}
-
-	printf("Finished processing flowfield (%i, %i)\n", goals[0].x, goals[0].y);
 }
 
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField);
@@ -452,8 +450,6 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationFie
 	const Node& node = openSet.top();
 	auto cost = costField->getCost(node.index);
 
-	auto p = arrayIndexToCoordinate(node.index);
-
 	if (cost == COST_NOT_PASSABLE) {
 		return;
 	}
@@ -465,8 +461,6 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationFie
 
 	const unsigned short integrationCost = node.predecessorCost + cost;
 	const unsigned short oldIntegrationCost = integrationField->getCost(node.index);
-
-	printf("(%i, %i) (%i) = %i --- %i\n", p.x, p.y, cost, oldIntegrationCost, integrationCost);
 
 	if (integrationCost < oldIntegrationCost) {
 		integrationField->setCost(node.index, integrationCost);
