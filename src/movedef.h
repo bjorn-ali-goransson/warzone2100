@@ -27,19 +27,18 @@
 #include "lib/framework/vector.h"
 
 #include <vector>
-#include <deque>
 
 enum MOVE_STATUS
 {
-	MOVEINACTIVE,
-	MOVENAVIGATE,
-	MOVETURN,
+	MOVEINACTIVE,		// Droid not moves
+	MOVENAVIGATE,		// Droid just started moving: looks for next waypoint in A* path, then continues point-to-point
+	MOVETURN,			// Droid moves point-to-point in next frame if VTOL, or stops moving
 	MOVEPAUSE,
-	MOVEPOINTTOPOINT,
-	MOVETURNTOTARGET,
-	MOVEHOVER,
-	MOVEWAITROUTE,
-	MOVESHUFFLE,
+	MOVEPOINTTOPOINT,	// Droid moves from one waypoint to another
+	MOVETURNTOTARGET,	// Droid turns to target direction with speed of 0
+	MOVEHOVER,			// Droids moves while hovering
+	MOVEWAITROUTE,		// Droid waits for A* to finish but starts moving in target direction
+	MOVESHUFFLE,		// Droid moves a bit around waypoint
 };
 
 struct MOVE_CONTROL
