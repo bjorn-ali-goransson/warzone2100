@@ -264,15 +264,16 @@ std::mutex flowfieldMutex;
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-inline unsigned int mapCoordinateToArrayIndex(unsigned short x, unsigned short y) { return y * FF_MAP_HEIGHT + x; }
+inline unsigned int coordinateToArrayIndex(unsigned short x, unsigned short y) { return y * FF_MAP_WIDTH + x; }
+inline Vector2i arrayIndexToCoordinate(unsigned int index) { return Vector2i { index % FF_MAP_WIDTH, index / FF_MAP_WIDTH }; }
 
 struct IntegrationField {
 	unsigned short cost[FF_MAP_AREA];
 	void setCost(unsigned int x, unsigned int y, unsigned short cost){
-		this->cost[mapCoordinateToArrayIndex(x, y)] = cost;
+		this->cost[coordinateToArrayIndex(x, y)] = cost;
 	}
 	unsigned short getCost(unsigned int x, unsigned int y){
-		return this->cost[mapCoordinateToArrayIndex(x, y)];
+		return this->cost[coordinateToArrayIndex(x, y)];
 	}
 	void setCost(unsigned int index, unsigned short cost){
 		this->cost[index] = cost;
@@ -285,10 +286,10 @@ struct IntegrationField {
 struct CostField {
 	unsigned short cost[FF_MAP_AREA];
 	void setCost(unsigned int x, unsigned int y, unsigned short cost){
-		this->cost[mapCoordinateToArrayIndex(x, y)] = cost;
+		this->cost[coordinateToArrayIndex(x, y)] = cost;
 	}
 	unsigned short getCost(unsigned int x, unsigned int y){
-		return this->cost[mapCoordinateToArrayIndex(x, y)];
+		return this->cost[coordinateToArrayIndex(x, y)];
 	}
 	void setCost(unsigned int index, unsigned short cost){
 		this->cost[index] = cost;
@@ -320,10 +321,10 @@ struct Flowfield {
 	std::array<VectorT, FF_MAP_AREA> vectors;
 
 	void setVector(unsigned short x, unsigned short y, VectorT vector) {
-		vectors[mapCoordinateToArrayIndex(x, y)] = vector;
+		vectors[coordinateToArrayIndex(x, y)] = vector;
 	}
 	VectorT getVector(unsigned short x, unsigned short y) const {
-		return vectors[mapCoordinateToArrayIndex(x, y)];
+		return vectors[coordinateToArrayIndex(x, y)];
 	}
 };
 
@@ -385,10 +386,10 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 
 	// TODO: multiple goals for formations
-	std::vector<ComparableVector2i> finalGoals { request.goal };
+	std::vector<ComparableVector2i> goals { request.goal };
 
-	if (flowfieldCache.count(finalGoals)) {
-		printf("Found cached flowfield [%i] (%i, %i)\n", (int)finalGoals.size(), finalGoals[0].x, finalGoals[0].y);
+	if (flowfieldCache.count(goals)) {
+		printf("Found cached flowfield [%i] (%i, %i)\n", (int)goals.size(), goals[0].x, goals[0].y);
 		return;
 	}
 
@@ -399,12 +400,12 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 
 
-	printf("Processing flowfield [%i] (%i, %i)\n", (int)finalGoals.size(), finalGoals[0].x, finalGoals[0].y);
+	printf("Processing flowfield [%i] (%i, %i)\n", (int)goals.size(), goals[0].x, goals[0].y);
 
 	IntegrationField* integrationField = new IntegrationField();
 	latestIntegrationField = integrationField;
-	calculateIntegrationField(finalGoals, integrationField);
-	printf("Finished processing integration field (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
+	calculateIntegrationField(goals, integrationField);
+	printf("Finished processing integration field (%i, %i)\n", goals[0].x, goals[0].y);
 
 	Flowfield* flowField = new Flowfield();
 	flowField->id = flowfieldIdIncrementor++;
@@ -415,12 +416,12 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
 		auto cache = flowfieldCaches[propulsionToIndex.at(request.propulsion)].get();
 
-		printf("Inserting (%i, %i)[+%i] into cache\n", finalGoals[0].x, finalGoals[0].y, (int)finalGoals.size() - 1);
+		printf("Inserting (%i, %i)[+%i] into cache\n", goals[0].x, goals[0].y, (int)goals.size() - 1);
 
-		cache->insert(std::make_pair(finalGoals, std::unique_ptr<Flowfield>(flowField)));
+		cache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
 	}
 
-	printf("Finished processing flowfield (%i, %i)\n", finalGoals[0].x, finalGoals[0].y);
+	printf("Finished processing flowfield (%i, %i)\n", goals[0].x, goals[0].y);
 }
 
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField);
@@ -439,7 +440,7 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	std::priority_queue<Node> openSet;
 
 	for (auto& point : points) {
-		openSet.push({ 0, (unsigned int)(point.y * FF_MAP_WIDTH + point.x) });
+		openSet.push({ 0, coordinateToArrayIndex(point.x, point.y) });
 	}
 
 	while (!openSet.empty()) {
@@ -451,35 +452,31 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center) {
 	std::vector<unsigned int> neighbors;
 	
-	for (int y = -1; y <= 1; y++) {
-		const int realY = center.y + y;
-		for (int x = -1; x <= 1; x++) {
-			const int realX = center.x + x;
-			if ((y == 0 && x == 0) || realY < 0 || realX < 0 || realY >= mapHeight || realX >= mapWidth) {
+	for (int yOffset = -1; yOffset <= 1; yOffset++) {
+		const int y = center.y + yOffset;
+		for (int xOffset = -1; xOffset <= 1; xOffset++) {
+			const int x = center.x + xOffset;
+			if ((yOffset == 0 && xOffset == 0) || y < 0 || x < 0 || y >= mapHeight || x >= mapWidth) {
 				// Skip self and out-of-map
 				continue;
 			}
 
-			if (costField->getCost(realX, realY) != COST_NOT_PASSABLE) {
-				neighbors.push_back(mapCoordinateToArrayIndex(realX, realY));
+			if (costField->getCost(x, y) != COST_NOT_PASSABLE) {
+				neighbors.push_back(coordinateToArrayIndex(x, y));
 			}
 		}
 	}
 
-
-
 	return neighbors;
-}
-
-Vector2i getPointByTileIndex(unsigned int index) {
-	const unsigned int y = index / mapWidth;
-	const unsigned int x = index % mapWidth;
-	return Vector2i { x, y };
 }
 
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField) {
 	const Node& node = openSet.top();
 	auto cost = costField->getCost(node.index);
+
+	auto p = arrayIndexToCoordinate(node.index);
+
+	printf("Cost of (%i, %i): %i\n", p.x, p.y, cost);
 
 	if (cost == COST_NOT_PASSABLE) {
 		return;
@@ -498,7 +495,7 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationFie
 	if (newCost < nodeOldCost) {
 		integrationField->setCost(node.index, newCost);
 
-		for (unsigned int neighbor : getTraversableAdjacentTiles(getPointByTileIndex(node.index))) {
+		for (unsigned int neighbor : getTraversableAdjacentTiles(arrayIndexToCoordinate(node.index))) {
 			openSet.push({ newCost, neighbor });
 		}
 	}
