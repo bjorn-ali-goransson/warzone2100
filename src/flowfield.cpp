@@ -654,8 +654,10 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 				pie_RotateProject(&integrationFieldText3dCoordinates, mvp, &integrationFieldText2dCoordinates);
 				auto cost = latestIntegrationField->getCost(x, z);
-				WzText costText(std::to_string(cost), font_small);
-				costText.render(integrationFieldText2dCoordinates.x, integrationFieldText2dCoordinates.y, WZCOL_TEXT_BRIGHT);
+				if(cost != COST_NOT_PASSABLE){
+					WzText costText(std::to_string(cost), font_small);
+					costText.render(integrationFieldText2dCoordinates.x, integrationFieldText2dCoordinates.y, WZCOL_TEXT_BRIGHT);
+				}
 			}
 
 			// flowfields
@@ -673,13 +675,16 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 
 				// origin
 
-				iV_PolyLine({
-					{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
-					{ startPointX - 10, portalHeight + 10, -startPointY + 10 },
-					{ startPointX + 10, portalHeight + 10, -startPointY + 10 },
-					{ startPointX + 10, portalHeight + 10, -startPointY - 10 },
-					{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
-				}, mvp, WZCOL_WHITE);
+				auto cost = costField->getCost(x, z);
+				if(cost != COST_NOT_PASSABLE){
+					iV_PolyLine({
+						{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
+						{ startPointX - 10, portalHeight + 10, -startPointY + 10 },
+						{ startPointX + 10, portalHeight + 10, -startPointY + 10 },
+						{ startPointX + 10, portalHeight + 10, -startPointY - 10 },
+						{ startPointX - 10, portalHeight + 10, -startPointY - 10 },
+					}, mvp, WZCOL_WHITE);
+				}
 				
 				// direction
 
