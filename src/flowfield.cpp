@@ -98,6 +98,29 @@ constexpr const unsigned short FLOWFIELD_CACHE_MAX = 8096;
 */
 constexpr const float OBSTACLE_AVOIDANCE_COEFF = 1.0f;
 
+// Propulsion mapping FOR READING DATA ONLY! See below.
+const std::map<PROPULSION_TYPE, int> propulsionToIndex
+{
+	// All these share the same flowfield, because they are different types of ground-only
+	{PROPULSION_TYPE_WHEELED, 0},
+	{PROPULSION_TYPE_TRACKED, 0},
+	{PROPULSION_TYPE_LEGGED, 0},
+	{PROPULSION_TYPE_HALF_TRACKED, 0},
+	//////////////////////////////////
+	{PROPULSION_TYPE_PROPELLOR, 1},
+	{PROPULSION_TYPE_HOVER, 2},
+	{PROPULSION_TYPE_LIFT, 3}
+};
+
+// Propulsion used in for-loops FOR WRITING DATA. We don't want to process "0" index multiple times.
+const std::map<PROPULSION_TYPE, int> propulsionToIndexUnique
+{
+	{PROPULSION_TYPE_WHEELED, 0},
+	{PROPULSION_TYPE_PROPELLOR, 1},
+	{PROPULSION_TYPE_HOVER, 2},
+	{PROPULSION_TYPE_LIFT, 3}
+};
+
 void initCostFields();
 void destroyCostFields();
 void destroyflowfieldCaches();
@@ -146,6 +169,14 @@ static WZ_THREAD        *ffpathThread = nullptr;
 static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
 static std::list<wz::packaged_task<FLOWFIELDREQUEST()>>    flowfieldRequests;
+static std::array<std::unique_ptr<std::map<ComparableVector2i, bool>>, 4> activeFlowfieldRequests = {
+	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
+	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
+	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
+	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
+};
+// Mutex for sector-level vector field cache
+std::mutex flowfieldMutex;
 
 void processFlowfield(FLOWFIELDREQUEST request);
 
@@ -156,11 +187,26 @@ void calculateFlowfieldAsync(unsigned int targetX, unsigned int targetY, PROPULS
 	request.goal = goal;
 	request.propulsion = propulsion;
 
-	wz::packaged_task<FLOWFIELDREQUEST()> requestTask([request]() { processFlowfield(request); return request; });
+	wz::packaged_task<FLOWFIELDREQUEST()> requestTask([request]() {
+		processFlowfield(request);
 
+		wzMutexLock(ffpathMutex);
+		activeFlowfieldRequests[propulsionToIndex.at(request.propulsion)]->erase(request.goal);
+		wzMutexUnlock(ffpathMutex);
+		
+		return request;
+	});
+	
 	wzMutexLock(ffpathMutex);
+
+	if(activeFlowfieldRequests[propulsionToIndex.at(request.propulsion)]->count({ request.goal })){
+		return; // already requested this exact flowfield. patience is golden.
+	}
+
 	bool isFirstRequest = flowfieldRequests.empty();
 	flowfieldRequests.push_back(std::move(requestTask));
+	activeFlowfieldRequests[propulsionToIndex.at(request.propulsion)]->insert(std::make_pair<ComparableVector2i, bool>(request.goal, true));
+	
 	wzMutexUnlock(ffpathMutex);
 
 	if (isFirstRequest)
@@ -199,7 +245,6 @@ static int ffpathThreadFunc(void *)
 	return 0;
 }
 
-
 // initialise the findpath module
 bool ffpathInitialise()
 {
@@ -208,7 +253,6 @@ bool ffpathInitialise()
 
 	if (!ffpathThread)
 	{
-		printf("Initialising thread\n");
 		ffpathMutex = wzMutexCreate();
 		ffpathSemaphore = wzSemaphoreCreate(0);
 		ffpathThread = wzThreadCreate(ffpathThreadFunc, nullptr);
@@ -235,32 +279,6 @@ void ffpathShutdown()
 		ffpathSemaphore = nullptr;
 	}
 }
-
-// Propulsion mapping FOR READING DATA ONLY! See below.
-const std::map<PROPULSION_TYPE, int> propulsionToIndex
-{
-	// All these share the same flowfield, because they are different types of ground-only
-	{PROPULSION_TYPE_WHEELED, 0},
-	{PROPULSION_TYPE_TRACKED, 0},
-	{PROPULSION_TYPE_LEGGED, 0},
-	{PROPULSION_TYPE_HALF_TRACKED, 0},
-	//////////////////////////////////
-	{PROPULSION_TYPE_PROPELLOR, 1},
-	{PROPULSION_TYPE_HOVER, 2},
-	{PROPULSION_TYPE_LIFT, 3}
-};
-
-// Propulsion used in for-loops FOR WRITING DATA. We don't want to process "0" index multiple times.
-const std::map<PROPULSION_TYPE, int> propulsionToIndexUnique
-{
-	{PROPULSION_TYPE_WHEELED, 0},
-	{PROPULSION_TYPE_PROPELLOR, 1},
-	{PROPULSION_TYPE_HOVER, 2},
-	{PROPULSION_TYPE_LIFT, 3}
-};
-
-// Mutex for sector-level vector field cache
-std::mutex flowfieldMutex;
 
 //////////////////////////////////////////////////////////////////////////////////////
 
@@ -639,7 +657,7 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 			
 			// position
 
-			if(x < 999 && z < 999){
+			if(x < 999 && z < 999 && cost != COST_NOT_PASSABLE){
 				char positionString[7];
 				ssprintf(positionString, "%i,%i", x, z);
 				const Vector3i positionText3dCoords = { (XA + 20), height, -(ZB - 20) };
