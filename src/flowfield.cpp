@@ -484,16 +484,6 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationFie
 	}
 }
 
-unsigned short getCostOrDefault(IntegrationField* integrationField, Vector2i coords, unsigned short defaultCost) {
-	const auto cost = integrationField->getCost(coords.x, coords.y);
-	
-	if (cost == COST_NOT_PASSABLE) {
-		return defaultCost * OBSTACLE_AVOIDANCE_COEFF;
-	}
-
-	return cost;
-}
-
 void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField) {
 	for (int y = 0; y < mapHeight; y++) {
 		for (int x = 0; x < mapWidth; x++) {
@@ -508,11 +498,25 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 			// Use current tile cost when no cost available.
 			// This will either keep the vector horizontal or vertical, or turn away from higher-cost neighbor
 			// NOTICE: Flow field on sector borders might be not optimal
-			const unsigned short leftCost = getCostOrDefault(integrationField, {x - 1, y}, cost);
-			const unsigned short rightCost = getCostOrDefault(integrationField, {x + 1, y}, cost);
+			unsigned short leftCost = integrationField->getCost(x - 1, y);
+			unsigned short rightCost = integrationField->getCost(x + 1, y);
 
-			const unsigned short topCost = getCostOrDefault(integrationField, {x, y - 1}, cost);
-			const unsigned short bottomCost = getCostOrDefault(integrationField, {x, y + 1}, cost);
+			if(rightCost == COST_NOT_PASSABLE && leftCost != COST_NOT_PASSABLE){
+				rightCost = std::max(leftCost, cost); // enables us to get off the ledge.
+			}
+			if(leftCost == COST_NOT_PASSABLE && rightCost != COST_NOT_PASSABLE){
+				leftCost = std::max(rightCost, cost); // enables us to get off the ledge.
+			}
+
+			unsigned short topCost = integrationField->getCost(x, y - 1);
+			unsigned short bottomCost = integrationField->getCost(x, y + 1);
+
+			if(topCost == COST_NOT_PASSABLE && bottomCost != COST_NOT_PASSABLE){
+				topCost = std::max(bottomCost, cost); // enables us to get off the ledge.
+			}
+			if(bottomCost == COST_NOT_PASSABLE && topCost != COST_NOT_PASSABLE){
+				bottomCost = std::max(topCost, cost); // enables us to get off the ledge.
+			}
 
 			VectorT vector;
 			vector.x = leftCost - rightCost;
