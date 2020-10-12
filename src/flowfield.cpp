@@ -96,7 +96,7 @@ constexpr const unsigned short FLOWFIELD_CACHE_MAX = 8096;
 * Used in vector field generation for both map edges and non-passable terrain.
 * The result is used as integer, so for small cost and small coefficient it makes no difference
 */
-constexpr const float OBSTACLE_AVOIDANCE_COEFF = 1.5f;
+constexpr const float OBSTACLE_AVOIDANCE_COEFF = 1.0f;
 
 void initCostFields();
 void destroyCostFields();
