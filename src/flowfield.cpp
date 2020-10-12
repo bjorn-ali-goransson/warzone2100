@@ -444,27 +444,6 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	}
 }
 
-std::vector<unsigned int> getTraversableAdjacentTiles(Vector2i center, CostField* costField) {
-	std::vector<unsigned int> neighbors;
-	
-	for (int yOffset = -1; yOffset <= 1; yOffset++) {
-		const int y = center.y + yOffset;
-		for (int xOffset = -1; xOffset <= 1; xOffset++) {
-			const int x = center.x + xOffset;
-			if ((yOffset == 0 && xOffset == 0) || y < 0 || x < 0 || y >= mapHeight || x >= mapWidth) {
-				// Skip self and out-of-map
-				continue;
-			}
-
-			if (costField->getCost(x, y) != COST_NOT_PASSABLE) {
-				neighbors.push_back(coordinateToArrayIndex(x, y));
-			}
-		}
-	}
-
-	return neighbors;
-}
-
 void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField) {
 	const Node& node = openSet.top();
 	auto cost = costField->getCost(node.index);
@@ -484,8 +463,23 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationFie
 	if (integrationCost < oldIntegrationCost) {
 		integrationField->setCost(node.index, integrationCost);
 
-		for (unsigned int neighbor : getTraversableAdjacentTiles(arrayIndexToCoordinate(node.index), costField)) {
-			openSet.push({ integrationCost, neighbor });
+		auto coordinate = arrayIndexToCoordinate(node.index);
+
+		// North
+		if(coordinate.y > 0){
+			openSet.push({ integrationCost, coordinateToArrayIndex(coordinate.x, coordinate.y - 1) });
+		}
+		// East
+		if(coordinate.x < mapWidth){
+			openSet.push({ integrationCost, coordinateToArrayIndex(coordinate.x + 1, coordinate.y) });
+		}
+		// South
+		if(coordinate.y < mapHeight){
+			openSet.push({ integrationCost, coordinateToArrayIndex(coordinate.x, coordinate.y + 1) });
+		}
+		// West
+		if(coordinate.x > 0){
+			openSet.push({ integrationCost, coordinateToArrayIndex(coordinate.x - 1, coordinate.y) });
 		}
 	}
 }
