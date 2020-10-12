@@ -169,7 +169,7 @@ static WZ_THREAD        *ffpathThread = nullptr;
 static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
 static std::list<FLOWFIELDREQUEST> flowfieldRequests;
-static std::map<std::pair<ComparableVector2i, PROPULSION_TYPE>, bool> flowfieldActiveRequests;
+static std::map<std::pair<ComparableVector2i, PROPULSION_TYPE>, bool> flowfieldCurrentlyActiveRequests;
 std::mutex flowfieldMutex;
 
 void processFlowfield(FLOWFIELDREQUEST request);
@@ -181,7 +181,7 @@ void calculateFlowfieldAsync(unsigned int targetX, unsigned int targetY, PROPULS
 	request.goal = goal;
 	request.propulsion = propulsion;
 	
-	if(flowfieldActiveRequests.count(std::make_pair(ComparableVector2i(goal), propulsion))){
+	if(flowfieldCurrentlyActiveRequests.count(std::make_pair(ComparableVector2i(goal), propulsion))){
 		return; // already requested this exact flowfield. patience is golden.
 	}
 
@@ -219,11 +219,11 @@ static int ffpathThreadFunc(void *)
 			auto request = std::move(flowfieldRequests.front());
 			flowfieldRequests.pop_front();
 
-			flowfieldActiveRequests.insert(std::make_pair(std::make_pair(ComparableVector2i(request.goal), request.propulsion), true));
+			flowfieldCurrentlyActiveRequests.insert(std::make_pair(std::make_pair(ComparableVector2i(request.goal), request.propulsion), true));
 			wzMutexUnlock(ffpathMutex);
 			processFlowfield(request);
 			wzMutexLock(ffpathMutex);
-			flowfieldActiveRequests.erase(std::make_pair(ComparableVector2i(request.goal), request.propulsion));
+			flowfieldCurrentlyActiveRequests.erase(std::make_pair(ComparableVector2i(request.goal), request.propulsion));
 		}
 	}
 	wzMutexUnlock(ffpathMutex);
