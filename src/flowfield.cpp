@@ -168,14 +168,8 @@ static volatile bool ffpathQuit = false;
 static WZ_THREAD        *ffpathThread = nullptr;
 static WZ_MUTEX         *ffpathMutex = nullptr;
 static WZ_SEMAPHORE     *ffpathSemaphore = nullptr;
-static std::list<wz::packaged_task<FLOWFIELDREQUEST()>>    flowfieldRequests;
-static std::array<std::unique_ptr<std::map<ComparableVector2i, bool>>, 4> activeFlowfieldRequests = {
-	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
-	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
-	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
-	std::unique_ptr<std::map<ComparableVector2i, bool>>(new std::map<ComparableVector2i, bool>()),
-};
-// Mutex for sector-level vector field cache
+static std::list<FLOWFIELDREQUEST> flowfieldRequests;
+static std::map<std::pair<ComparableVector2i, PROPULSION_TYPE>, bool> flowfieldActiveRequests;
 std::mutex flowfieldMutex;
 
 void processFlowfield(FLOWFIELDREQUEST request);
@@ -186,29 +180,18 @@ void calculateFlowfieldAsync(unsigned int targetX, unsigned int targetY, PROPULS
 	FLOWFIELDREQUEST request;
 	request.goal = goal;
 	request.propulsion = propulsion;
-
-	wz::packaged_task<FLOWFIELDREQUEST()> requestTask([request]() {
-		processFlowfield(request);
-
-		wzMutexLock(ffpathMutex);
-		activeFlowfieldRequests[propulsionToIndex.at(request.propulsion)]->erase(request.goal);
-		wzMutexUnlock(ffpathMutex);
-		
-		return request;
-	});
 	
-	wzMutexLock(ffpathMutex);
-
-	if(activeFlowfieldRequests[propulsionToIndex.at(request.propulsion)]->count({ request.goal })){
+	if(flowfieldActiveRequests.count(std::make_pair(ComparableVector2i(goal), propulsion))){
 		return; // already requested this exact flowfield. patience is golden.
 	}
 
+	wzMutexLock(ffpathMutex);
+
 	bool isFirstRequest = flowfieldRequests.empty();
-	flowfieldRequests.push_back(std::move(requestTask));
-	activeFlowfieldRequests[propulsionToIndex.at(request.propulsion)]->insert(std::make_pair<ComparableVector2i, bool>(request.goal, true));
+	flowfieldRequests.push_back(request);
 	
 	wzMutexUnlock(ffpathMutex);
-
+	
 	if (isFirstRequest)
 	{
 		wzSemaphorePost(ffpathSemaphore);  // Wake up processing thread.
@@ -233,12 +216,14 @@ static int ffpathThreadFunc(void *)
 		if(!flowfieldRequests.empty())
 		{
 			// Copy the first request from the queue.
-			auto flowfieldRequest = std::move(flowfieldRequests.front());
+			auto request = std::move(flowfieldRequests.front());
 			flowfieldRequests.pop_front();
 
+			flowfieldActiveRequests.insert(std::make_pair(std::make_pair(ComparableVector2i(request.goal), request.propulsion), true));
 			wzMutexUnlock(ffpathMutex);
-			flowfieldRequest();
+			processFlowfield(request);
 			wzMutexLock(ffpathMutex);
+			flowfieldActiveRequests.erase(std::make_pair(ComparableVector2i(request.goal), request.propulsion));
 		}
 	}
 	wzMutexUnlock(ffpathMutex);
@@ -409,6 +394,7 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField);
 
 void processFlowfield(FLOWFIELDREQUEST request) {
+
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
 	const auto flowfieldCache = flowfieldCaches[propulsionToIndex.at(request.propulsion)].get();
@@ -433,6 +419,7 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
+		printf("Inserting into cache\n");
 		flowfieldCache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowfield)));
 	}
 }
