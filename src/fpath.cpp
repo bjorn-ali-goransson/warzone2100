@@ -455,9 +455,9 @@ FPATH_RETVAL fpathDroidRoute(DROID *psDroid, SDWORD tX, SDWORD tY, FPATH_MOVETYP
 		
 		if(tryGetFlowfieldForTarget(tX, tY, psPropStats->propulsionType, flowfieldId))
 		{
-			printf("was cached!\n");
 			psDroid->sMove.pathIndex = 0;
 			psDroid->sMove.Status = MOVENAVIGATE;
+			psDroid->sMove.flowfield = flowfieldId;
 			psDroid->sMove.asPath = { { tX, tY } };
 
 			return FPR_OK;

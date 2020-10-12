@@ -44,6 +44,7 @@ void flowfieldDestroy();
 
 bool tryGetFlowfieldForTarget(unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion, unsigned int &flowfieldId);
 void calculateFlowfieldAsync(unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion);
+bool tryGetFlowfieldVector(unsigned int flowfieldId, int x, int y, Vector2f& vector);
 
 void debugDrawFlowfields(const glm::mat4 &mvp);
 

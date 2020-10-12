@@ -299,6 +299,7 @@ struct CostField {
 	}
 };
 
+// TODO: Remove this in favor of glm.
 struct VectorT {
 	float x;
 	float y;
@@ -345,15 +346,33 @@ std::array<std::unique_ptr<std::map<std::vector<ComparableVector2i>, std::unique
 };
 
 bool tryGetFlowfieldForTarget(unsigned int targetX, unsigned int targetY, PROPULSION_TYPE propulsion, unsigned int &flowfieldId){
-	auto& flowfieldCache = *flowfieldCaches[propulsionToIndex.at(propulsion)];
+	const auto flowfieldCache = flowfieldCaches[propulsionToIndex.at(propulsion)].get();
 
-	if(!flowfieldCache.count({ { (int)targetX, (int)targetY } })){
+	std::vector<ComparableVector2i> goals { { map_coord(targetX), map_coord(targetY) } };
+
+ 	// this check is already done in fpath.cpp.
+	// TODO: we should perhaps refresh the flowfield instead of just bailing here.
+	if (!flowfieldCache->count(goals)) {
 		return false;
 	}
 
-	auto& flowfield = *flowfieldCache[{ { (int)targetX, (int)targetY } }];
+	const auto flowfield = flowfieldCache->at(goals).get();
 
-	flowfieldId = flowfield.id;
+	flowfieldId = flowfield->id;
+
+	return true;
+}
+
+std::map<unsigned int, Flowfield*> flowfieldById;
+bool tryGetFlowfieldVector(unsigned int flowfieldId, int x, int y, Vector2f& vector){
+	if(!flowfieldById.count(flowfieldId)){
+		return false;
+	}
+
+	auto flowfield = flowfieldById.at(flowfieldId);
+
+	auto v = flowfield->getVector(x, y);
+	vector = { v.x, v.y };
 
 	return true;
 }
@@ -372,16 +391,15 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField);
 
 void processFlowfield(FLOWFIELDREQUEST request) {
-
 	// NOTE for us noobs!!!! This function is executed on its own thread!!!!
 
-	const auto& flowfieldCache = flowfieldCaches[propulsionToIndex.at(request.propulsion)].get();
-	const auto& costField = costFields[propulsionToIndex.at(request.propulsion)].get();
+	const auto flowfieldCache = flowfieldCaches[propulsionToIndex.at(request.propulsion)].get();
+	const auto costField = costFields[propulsionToIndex.at(request.propulsion)].get();
 
 	std::vector<ComparableVector2i> goals { request.goal }; // TODO: multiple goals for formations
 
  	// this check is already done in fpath.cpp.
-	// TODO: we should perhaps refresh the flowfield instead of bailing here.
+	// TODO: we should perhaps refresh the flowfield instead of just bailing here.
 	if (flowfieldCache->count(goals)) {
 		return;
 	}
@@ -390,13 +408,14 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 	latestIntegrationField = integrationField;
 	calculateIntegrationField(goals, integrationField, costField); // TODO: measure time
 
-	Flowfield* flowField = new Flowfield();
-	flowField->id = flowfieldIdIncrementor++;
-	calculateFlowfield(flowField, integrationField); // TODO: measure time
+	Flowfield* flowfield = new Flowfield();
+	flowfield->id = flowfieldIdIncrementor++;
+	flowfieldById.insert(std::make_pair(flowfield->id, flowfield));
+	calculateFlowfield(flowfield, integrationField); // TODO: measure time
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
-		flowfieldCache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowField)));
+		flowfieldCache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowfield)));
 	}
 }
 
