@@ -522,6 +522,8 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 			// This will either keep the vector horizontal or vertical, or turn away from higher-cost neighbor
 			unsigned short leftCost = integrationField->getCost(x - 1, y);
 			unsigned short rightCost = integrationField->getCost(x + 1, y);
+			const bool leftImpassable = leftCost == COST_NOT_PASSABLE;
+			const bool rightImpassable = rightCost == COST_NOT_PASSABLE;
 
 			/// without the two following fixes, tiles next to an impassable tile ALWAYS
 			/// point straight away from the impassable - like an allergic reaction.
@@ -531,15 +533,17 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 			/// ox# <--- this comparison (between left and right) always will lean straight towards left.
 			/// ooo      the fix balances out the comparison.
 			/// 
-			if(rightCost == COST_NOT_PASSABLE && leftCost != COST_NOT_PASSABLE){
+			if(rightImpassable && !leftImpassable){
 				rightCost = std::max(leftCost, cost);
 			}
-			if(leftCost == COST_NOT_PASSABLE && rightCost != COST_NOT_PASSABLE){
+			if(leftImpassable && !rightImpassable){
 				leftCost = std::max(rightCost, cost);
 			}
 
 			unsigned short topCost = integrationField->getCost(x, y - 1);
 			unsigned short bottomCost = integrationField->getCost(x, y + 1);
+			const bool topImpassable = topCost == COST_NOT_PASSABLE;
+			const bool bottomImpassable = bottomCost == COST_NOT_PASSABLE;
 
 			/// without the two following fixes, tiles next to an impassable tile ALWAYS
 			/// point straight away from the impassable - like an allergic reaction.
@@ -549,11 +553,11 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 			/// oxo <--- this comparison (between top and bottom) always will lean straight towards the bottom.
 			/// ooo      the fix balances out the comparison.
 			/// 
-			if(topCost == COST_NOT_PASSABLE && bottomCost != COST_NOT_PASSABLE){
-				topCost = std::max(bottomCost, cost); // enables us to get off the ledge.
+			if(topImpassable && !bottomImpassable){
+				topCost = std::max(bottomCost, cost);
 			}
-			if(bottomCost == COST_NOT_PASSABLE && topCost != COST_NOT_PASSABLE){
-				bottomCost = std::max(topCost, cost); // enables us to get off the ledge.
+			if(bottomImpassable && !topImpassable){
+				bottomCost = std::max(topCost, cost);
 			}
 
 			VectorT vector;
