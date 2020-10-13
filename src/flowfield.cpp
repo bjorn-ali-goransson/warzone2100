@@ -520,7 +520,6 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 
 			// Use current tile cost when no cost available.
 			// This will either keep the vector horizontal or vertical, or turn away from higher-cost neighbor
-			// NOTICE: Flow field on sector borders might be not optimal
 			unsigned short leftCost = integrationField->getCost(x - 1, y);
 			unsigned short rightCost = integrationField->getCost(x + 1, y);
 
