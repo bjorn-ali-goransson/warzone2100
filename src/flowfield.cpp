@@ -518,12 +518,15 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 				continue;
 			}
 
-			// Use current tile cost when no cost available.
-			// This will either keep the vector horizontal or vertical, or turn away from higher-cost neighbor
 			unsigned short leftCost = integrationField->getCost(x - 1, y);
 			unsigned short rightCost = integrationField->getCost(x + 1, y);
 			const bool leftImpassable = leftCost == COST_NOT_PASSABLE;
 			const bool rightImpassable = rightCost == COST_NOT_PASSABLE;
+
+			unsigned short topCost = integrationField->getCost(x, y - 1);
+			unsigned short bottomCost = integrationField->getCost(x, y + 1);
+			const bool topImpassable = topCost == COST_NOT_PASSABLE;
+			const bool bottomImpassable = bottomCost == COST_NOT_PASSABLE;
 
 			/// without the two following fixes, tiles next to an impassable tile ALWAYS
 			/// point straight away from the impassable - like an allergic reaction.
@@ -539,11 +542,6 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 			if(leftImpassable && !rightImpassable){
 				leftCost = std::max(rightCost, cost);
 			}
-
-			unsigned short topCost = integrationField->getCost(x, y - 1);
-			unsigned short bottomCost = integrationField->getCost(x, y + 1);
-			const bool topImpassable = topCost == COST_NOT_PASSABLE;
-			const bool bottomImpassable = bottomCost == COST_NOT_PASSABLE;
 
 			/// without the two following fixes, tiles next to an impassable tile ALWAYS
 			/// point straight away from the impassable - like an allergic reaction.
