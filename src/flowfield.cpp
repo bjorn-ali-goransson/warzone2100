@@ -422,12 +422,11 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 
 	{
 		std::lock_guard<std::mutex> lock(flowfieldMutex);
-		printf("Inserting into cache\n");
 		flowfieldCache->insert(std::make_pair(goals, std::unique_ptr<Flowfield>(flowfield)));
 	}
 }
 
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField);
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField, std::set<ComparableVector2i>* stationaryDroids);
 
 void calculateIntegrationField(const std::vector<ComparableVector2i>& points, IntegrationField* integrationField, CostField* costField) {
 	// TODO: here do checking if given tile contains a building (instead of doing that in cost field)
@@ -435,6 +434,18 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	for (unsigned int x = 0; x < mapWidth; x++) {
 		for (unsigned int y = 0; y < mapHeight; y++) {
 			integrationField->setCost(x, y, COST_NOT_PASSABLE);
+		}
+	}
+
+	std::unique_ptr<std::set<ComparableVector2i>> stationaryDroids = std::unique_ptr<std::set<ComparableVector2i>>(new std::set<ComparableVector2i>());
+
+	for (unsigned i = 0; i < MAX_PLAYERS; i++)
+	{
+		for (DROID *psCurr = apsDroidLists[i]; psCurr != nullptr; psCurr = psCurr->psNext)
+		{
+			if(psCurr->sMove.Status == MOVEINACTIVE){
+				stationaryDroids->insert({ map_coord(psCurr->pos.x), map_coord(psCurr->pos.y) });
+			}
 		}
 	}
 
@@ -447,16 +458,22 @@ void calculateIntegrationField(const std::vector<ComparableVector2i>& points, In
 	}
 
 	while (!openSet.empty()) {
-		integrateFlowfieldPoints(openSet, integrationField, costField);
+		integrateFlowfieldPoints(openSet, integrationField, costField, stationaryDroids.get());
 		openSet.pop();
 	}
 }
 
-void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField) {
+void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationField* integrationField, CostField* costField, std::set<ComparableVector2i>* stationaryDroids) {
 	const Node& node = openSet.top();
 	auto cost = costField->getCost(node.index);
 
 	if (cost == COST_NOT_PASSABLE) {
+		return;
+	}
+
+	auto coordinate = arrayIndexToCoordinate(node.index);
+
+	if(stationaryDroids->count({ coordinate })){
 		return;
 	}
 
@@ -470,8 +487,6 @@ void integrateFlowfieldPoints(std::priority_queue<Node>& openSet, IntegrationFie
 
 	if (integrationCost < oldIntegrationCost) {
 		integrationField->setCost(node.index, integrationCost);
-
-		auto coordinate = arrayIndexToCoordinate(node.index);
 
 		// North
 		if(coordinate.y > 0){
