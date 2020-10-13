@@ -530,12 +530,9 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 
 			/// without the two following fixes, tiles next to an impassable tile ALWAYS
 			/// point straight away from the impassable - like an allergic reaction.
+			/// (this is because impassable tiles have MAX cost.)
+
 			/// the fix here is for the horizontal axis.
-			/// 
-			/// ooo
-			/// ox# <--- this comparison (between left and right) always will lean straight towards left.
-			/// ooo      the fix balances out the comparison.
-			/// 
 			if(rightImpassable && !leftImpassable){
 				rightCost = std::max(leftCost, cost);
 			}
@@ -543,14 +540,7 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 				leftCost = std::max(rightCost, cost);
 			}
 
-			/// without the two following fixes, tiles next to an impassable tile ALWAYS
-			/// point straight away from the impassable - like an allergic reaction.
 			/// the fix here is for the vertical axis.
-			/// 
-			/// o#o
-			/// oxo <--- this comparison (between top and bottom) always will lean straight towards the bottom.
-			/// ooo      the fix balances out the comparison.
-			/// 
 			if(topImpassable && !bottomImpassable){
 				topCost = std::max(bottomCost, cost);
 			}
