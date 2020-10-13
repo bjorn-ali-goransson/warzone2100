@@ -523,16 +523,32 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 			unsigned short leftCost = integrationField->getCost(x - 1, y);
 			unsigned short rightCost = integrationField->getCost(x + 1, y);
 
+			/// without the two following fixes, tiles next to an impassable tile ALWAYS
+			/// point straight away from the impassable - like an allergic reaction.
+			/// the fix here is for the horizontal axis.
+			/// 
+			/// ooo
+			/// ox# <--- this comparison (between left and right) always will lean straight towards left.
+			/// ooo      the fix balances out the comparison.
+			/// 
 			if(rightCost == COST_NOT_PASSABLE && leftCost != COST_NOT_PASSABLE){
-				rightCost = std::max(leftCost, cost); // enables us to get off the ledge.
+				rightCost = std::max(leftCost, cost);
 			}
 			if(leftCost == COST_NOT_PASSABLE && rightCost != COST_NOT_PASSABLE){
-				leftCost = std::max(rightCost, cost); // enables us to get off the ledge.
+				leftCost = std::max(rightCost, cost);
 			}
 
 			unsigned short topCost = integrationField->getCost(x, y - 1);
 			unsigned short bottomCost = integrationField->getCost(x, y + 1);
 
+			/// without the two following fixes, tiles next to an impassable tile ALWAYS
+			/// point straight away from the impassable - like an allergic reaction.
+			/// the fix here is for the vertical axis.
+			/// 
+			/// o#o
+			/// oxo <--- this comparison (between top and bottom) always will lean straight towards the bottom.
+			/// ooo      the fix balances out the comparison.
+			/// 
 			if(topCost == COST_NOT_PASSABLE && bottomCost != COST_NOT_PASSABLE){
 				topCost = std::max(bottomCost, cost); // enables us to get off the ledge.
 			}
