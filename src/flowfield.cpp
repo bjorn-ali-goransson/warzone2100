@@ -317,11 +317,13 @@ struct VectorT {
 	}
 };
 
-unsigned int flowfieldIdIncrementor = 0;
+/// auto increment state for flowfield ids. Used on psDroid->sMove.flowfield. 0 means no flowfield exists for the unit.
+unsigned int flowfieldIdIncrementor = 1;
 IntegrationField* latestIntegrationField = nullptr;
 
 struct Flowfield {
 	unsigned int id;
+	std::vector<Vector2i> goals;
 	std::array<VectorT, FF_MAP_AREA> vectors;
 
 	void setVector(unsigned short x, unsigned short y, VectorT vector) {
@@ -412,8 +414,9 @@ void processFlowfield(FLOWFIELDREQUEST request) {
 	latestIntegrationField = integrationField;
 	calculateIntegrationField(goals, integrationField, costField); // TODO: measure time
 
-	Flowfield* flowfield = new Flowfield();
+	auto flowfield = new Flowfield();
 	flowfield->id = flowfieldIdIncrementor++;
+	flowfield->goals = { request.goal };
 	flowfieldById.insert(std::make_pair(flowfield->id, flowfield));
 	calculateFlowfield(flowfield, integrationField); // TODO: measure time
 
@@ -668,13 +671,51 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 					costText.render(integrationFieldText2dCoordinates.x, integrationFieldText2dCoordinates.y, WZCOL_TEXT_BRIGHT);
 				}
 			}
+	 	}
+	}
 
-			// flowfields
+	// flowfields
 
-			auto cache = flowfieldCaches[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
+	std::set<Flowfield*> flowfieldsToDraw;
 
-			for (auto const& cacheEntry: *cache) {
-				auto& flowfield = cacheEntry.second;
+	for (DROID *psDroid = apsDroidLists[selectedPlayer]; psDroid; psDroid = psDroid->psNext)
+	{
+		if (!psDroid->selected)
+		{
+			continue;
+		}
+		if (psDroid->sMove.Status != MOVEPOINTTOPOINT)
+		{
+			continue;
+		}
+		if (psDroid->sMove.flowfield == 0)
+		{
+			continue;
+		}
+
+		flowfieldsToDraw.insert(flowfieldById.at(psDroid->sMove.flowfield));
+	}
+
+	for(auto flowfield : flowfieldsToDraw){
+		for (auto deltaX = -6; deltaX <= 6; deltaX++)
+		{
+			const auto x = playerXTile + deltaX;
+
+			if(x < 0){
+				continue;
+			}
+			
+			for (auto deltaZ = -6; deltaZ <= 6; deltaZ++)
+			{
+				const auto z = playerZTile + deltaZ;
+
+				if(z < 0){
+					continue;
+				}
+				
+				const float XA = world_coord(x);
+				const float ZA = world_coord(z);
+
 				auto vector = flowfield->getVector(x, z);
 				
 				auto startPointX = XA + FF_TILE_SIZE / 2;
@@ -702,17 +743,11 @@ void debugDrawFlowfield(const glm::mat4 &mvp) {
 					{ startPointX + vector.x * 75, portalHeight + 10, -startPointY - vector.y * 75 },
 				}, mvp, WZCOL_WHITE);
 			}
-	 	}
-	}
+		}
 
-	// flowfields
-
-	auto cache = flowfieldCaches[propulsionToIndex.at(PROPULSION_TYPE_WHEELED)].get();
-
-	for (auto const& cacheEntry: *cache) {
 		// goal
 
-		for (auto&& goal : cacheEntry.first) {
+		for(auto goal : flowfield->goals){
 			auto goalX = world_coord(goal.x) + FF_TILE_SIZE / 2;
 			auto goalY = world_coord(goal.y) + FF_TILE_SIZE / 2;
 			auto portalHeight = map_TileHeight(goalX, goalY);
