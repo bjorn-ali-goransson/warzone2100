@@ -554,7 +554,7 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 			bool tieBraker = ((x + y) % 1) == 1;
 
 			// only on the right is a wall, top and bottom have equal cost:
-			if(!leftImpassable && rightImpassable && !topImpassable && !bottomImpassable && topCost == bottomCost){
+			if(rightImpassable && !leftImpassable && !topImpassable && !bottomImpassable && topCost == bottomCost){
 				if(tieBraker) {
 					topCost = 0;
 				} else {
@@ -568,6 +568,24 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 					topCost = 0;
 				} else {
 					bottomCost = 0;
+				}
+			}
+
+			// only on the top is a wall, right and left have equal cost:
+			if(topImpassable && !bottomImpassable && !leftImpassable && !rightImpassable && leftCost == rightCost){
+				if(tieBraker) {
+					leftCost = 0;
+				} else {
+					rightCost = 0;
+				}
+			}
+
+			// only on the bottom is a wall, right and left have equal cost:
+			if(bottomImpassable && !topImpassable && !leftImpassable && !rightImpassable && leftCost == rightCost){
+				if(tieBraker) {
+					leftCost = 0;
+				} else {
+					rightCost = 0;
 				}
 			}
 
