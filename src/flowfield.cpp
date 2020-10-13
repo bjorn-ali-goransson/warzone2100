@@ -520,11 +520,11 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 
 			unsigned short leftCost = integrationField->getCost(x - 1, y);
 			unsigned short rightCost = integrationField->getCost(x + 1, y);
-			const bool leftImpassable = leftCost == COST_NOT_PASSABLE;
-			const bool rightImpassable = rightCost == COST_NOT_PASSABLE;
-
 			unsigned short topCost = integrationField->getCost(x, y - 1);
 			unsigned short bottomCost = integrationField->getCost(x, y + 1);
+
+			const bool leftImpassable = leftCost == COST_NOT_PASSABLE;
+			const bool rightImpassable = rightCost == COST_NOT_PASSABLE;
 			const bool topImpassable = topCost == COST_NOT_PASSABLE;
 			const bool bottomImpassable = bottomCost == COST_NOT_PASSABLE;
 
