@@ -548,6 +548,29 @@ void calculateFlowfield(Flowfield* flowField, IntegrationField* integrationField
 				bottomCost = std::max(topCost, cost);
 			}
 
+			/// if we are up against an impassable wall, the two directions along the wall
+			/// may cause a tie, which needs to be broken.
+
+			bool tieBraker = ((x + y) % 1) == 1;
+
+			// only on the right is a wall, top and bottom have equal cost:
+			if(!leftImpassable && rightImpassable && !topImpassable && !bottomImpassable && topCost == bottomCost){
+				if(tieBraker) {
+					topCost = 0;
+				} else {
+					bottomCost = 0;
+				}
+			}
+
+			// only on the left is a wall, top and bottom have equal cost:
+			if(leftImpassable && !rightImpassable && !topImpassable && !bottomImpassable && topCost == bottomCost){
+				if(tieBraker) {
+					topCost = 0;
+				} else {
+					bottomCost = 0;
+				}
+			}
+
 			VectorT vector;
 			vector.x = leftCost - rightCost;
 			vector.y = topCost - bottomCost;
