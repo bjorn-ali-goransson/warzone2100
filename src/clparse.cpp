@@ -33,6 +33,7 @@
 #include "clparse.h"
 #include "display3d.h"
 #include "frontend.h"
+#include "flowfield.h"
 #include "keybind.h"
 #include "loadsave.h"
 #include "main.h"
@@ -256,6 +257,7 @@ typedef enum
 	CLI_CONTINUE,
 	CLI_AUTOHOST,
 	CLI_AUTORATING,
+	CLI_FLOWFIELD,
 } CLI_OPTIONS;
 
 static const struct poptOption *getOptionsTable()
@@ -305,6 +307,7 @@ static const struct poptOption *getOptionsTable()
 		{ "continue", POPT_ARG_NONE, CLI_CONTINUE,   N_("Continue the last saved game"), nullptr },
 		{ "autohost", POPT_ARG_STRING, CLI_AUTOHOST,   N_("Start host game with given settings file"), N_("autohost") },
 		{ "autorating", POPT_ARG_STRING, CLI_AUTORATING,   N_("Query ratings from given server url (containing \"{HASH}\"), when hosting"), N_("autorating") },
+        { "flowfield", POPT_ARG_NONE, CLI_FLOWFIELD, N_("Use advanced Flow fields method for path finding (experimental)"), nullptr },
 		// Terminating entry
 		{ nullptr, 0, 0,              nullptr,                                    nullptr },
 	};
@@ -721,6 +724,11 @@ bool ParseCommandLine(int argc, const char * const *argv)
 			}
 			wz_autoratingUrl = token;
 			debug(LOG_INFO, "Using \"%s\" for ratings.", wz_autoratingUrl.c_str());
+			break;
+
+		case CLI_FLOWFIELD:
+			flowfieldEnable();
+			break;
 		};
 	}
 

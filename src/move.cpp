@@ -40,6 +40,7 @@
 #include "visibility.h"
 #include "map.h"
 #include "fpath.h"
+#include "flowfield.h"
 #include "loop.h"
 #include "geometry.h"
 #include "action.h"
@@ -2135,49 +2136,63 @@ void moveUpdateDroid(DROID *psDroid)
 		// fallthrough
 	case MOVEPOINTTOPOINT:
 	case MOVEPAUSE:
-		// moving between two way points
-		if (psDroid->sMove.asPath.size() == 0)
+	
+		if(isFlowfieldEnabled() && std::abs(glm::distance(Vector2f(psDroid->sMove.destination), Vector2f(psDroid->sMove.src))) > TILE_UNITS)
 		{
-			debug(LOG_WARNING, "No path to follow, but psDroid->sMove.Status = %d", psDroid->sMove.Status);
-		}
+				Vector2f vector;
 
-		// Get the best control point.
-		if (psDroid->sMove.asPath.size() == 0 || !moveBestTarget(psDroid))
-		{
-			// Got stuck somewhere, can't find the path.
-			moveDroidTo(psDroid, psDroid->sMove.destination.x, psDroid->sMove.destination.y);
-		}
-
-		// See if the target point has been reached
-		if (moveReachedWayPoint(psDroid))
-		{
-			// Got there - move onto the next waypoint
-			if (!moveNextTarget(psDroid))
+				if(tryGetFlowfieldVector(psDroid->sMove.flowfield, map_coord(psDroid->pos.x), map_coord(psDroid->pos.y), vector)){
+						psDroid->sMove.src = psDroid->pos.xy();
+						// TODO: This target should be transitioned in. (or?)
+						psDroid->sMove.target = psDroid->pos.xy() + Vector2i(vector.x * 500, vector.y * 500);
+				} else {
+						psDroid->sMove.Status = MOVEINACTIVE;
+				}
+		} else {
+			// moving between two way points
+			if (psDroid->sMove.asPath.size() == 0)
 			{
-				// No more waypoints - finish
-				if (psPropStats->propulsionType == PROPULSION_TYPE_LIFT)
+				debug(LOG_WARNING, "No path to follow, but psDroid->sMove.Status = %d", psDroid->sMove.Status);
+			}
+
+			// Get the best control point.
+			if (psDroid->sMove.asPath.size() == 0 || !moveBestTarget(psDroid))
+			{
+				// Got stuck somewhere, can't find the path.
+				moveDroidTo(psDroid, psDroid->sMove.destination.x, psDroid->sMove.destination.y);
+			}
+
+			// See if the target point has been reached
+			if (moveReachedWayPoint(psDroid))
+			{
+				// Got there - move onto the next waypoint
+				if (!moveNextTarget(psDroid))
 				{
-					// check the location for vtols
-					Vector2i tar = psDroid->pos.xy();
-					if (psDroid->order.type != DORDER_PATROL && psDroid->order.type != DORDER_CIRCLE  // Not doing an order which means we never land (which means we might want to land).
-					    && psDroid->action != DACTION_MOVETOREARM && psDroid->action != DACTION_MOVETOREARMPOINT
-					    && actionVTOLLandingPos(psDroid, &tar)  // Can find a sensible place to land.
-					    && map_coord(tar) != map_coord(psDroid->sMove.destination))  // We're not at the right place to land.
+					// No more waypoints - finish
+					if (psPropStats->propulsionType == PROPULSION_TYPE_LIFT)
 					{
-						psDroid->sMove.destination = tar;
-						moveDroidTo(psDroid, psDroid->sMove.destination.x, psDroid->sMove.destination.y);
+						// check the location for vtols
+						Vector2i tar = psDroid->pos.xy();
+						if (psDroid->order.type != DORDER_PATROL && psDroid->order.type != DORDER_CIRCLE  // Not doing an order which means we never land (which means we might want to land).
+							&& psDroid->action != DACTION_MOVETOREARM && psDroid->action != DACTION_MOVETOREARMPOINT
+							&& actionVTOLLandingPos(psDroid, &tar)  // Can find a sensible place to land.
+							&& map_coord(tar) != map_coord(psDroid->sMove.destination))  // We're not at the right place to land.
+						{
+							psDroid->sMove.destination = tar;
+							moveDroidTo(psDroid, psDroid->sMove.destination.x, psDroid->sMove.destination.y);
+						}
+						else
+						{
+							psDroid->sMove.Status = MOVEHOVER;
+						}
 					}
 					else
 					{
-						psDroid->sMove.Status = MOVEHOVER;
+						psDroid->sMove.Status = MOVETURN;
 					}
+					objTrace(psDroid->id, "Arrived at destination!");
+					break;
 				}
-				else
-				{
-					psDroid->sMove.Status = MOVETURN;
-				}
-				objTrace(psDroid->id, "Arrived at destination!");
-				break;
 			}
 		}
 
