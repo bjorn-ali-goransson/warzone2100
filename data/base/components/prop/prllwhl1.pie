@@ -1,6 +1,7 @@
 PIE 2
 TYPE 10200
 TEXTURE 0 page-16-droid-drives.png 256 256
+NORMALMAP 0 page-16_normalmap.png
 LEVELS 1
 LEVEL 1
 POINTS 62 
